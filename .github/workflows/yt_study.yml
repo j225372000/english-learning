@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
+    inputs:
+      video_id:
+        description: '請輸入 YouTube 影片 11 碼 ID'
+        required: true
+        default: 'dQw4w9WgXcQ'
+      video_type:
+        description: '請選擇 Prompt 範本 (english / finance / general)'
+        required: true
+        default: 'general'
 
 jobs:
   monitor-channel:
@@ -23,16 +32,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install google-genai
 
-    - name: ⚙️ Run Daily Script
+    - name: ⚙️ Run Script with Dynamic Inputs
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      run: python process_video.py
-
-    - name: 💾 Automatically Commit and Push the Markdown File
+        # 🎯 這裡做最強大、最安全的防禦，確保手動輸入與自動排程都能抓到變數
+        VIDEO_ID: ${{ github.event.inputs.video_id }}
+        VIDEO_TYPE: ${{ github.event.inputs.video_type }}
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add .
-        # 檢查有沒有新產生的 Markdown 檔案，有才提交，防止排程因無變更而報錯
-        git diff --quiet && git diff --staged --quiet || (git commit -m "✨ 自動更新：新增 Gemini AI 學習筆記" && git push)
+        # 如果是自動排程(schedule)，沒有手動輸入，就給它一個保底影片 ID
+        if [ -z "$VIDEO_ID" ]; then
+          export VIDEO_ID="dQw4w9WgXcQ"
+          export VIDEO_TYPE="general"
+        fi
+        python process_video.py
