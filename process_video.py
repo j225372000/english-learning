@@ -5,43 +5,40 @@ import json
 import youtube_transcript_api
 from google import genai
 
-# 直接鎖定「早晨財經速解讀」的頻道 ID
-CHANNEL_ID = "UC01bAQVpenvfA2QqzSRtL_g"
+# 正確鎖定「早晨財經速解讀」的官方 RSS 網址
+RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UC01bAQVpenvfA2QqzSRtL_g"
 
-def get_latest_video_via_api(channel_id):
+def get_latest_video_id(rss_url):
     """
-    使用萬用免金鑰的官方模擬請求，直接抓取頻道首頁的影片資料（避開所有 RSS 403/429 阻擋）
+    透過標準官方 RSS 網址抓取最新影片 ID，並加入防禦性 Headers 徹底破解 403 阻擋
     """
-    url = f"https://www.youtube.com/watch?v=dQw4w9WgXcQ" # 預設測試
     try:
-        # 改用模擬高權限瀏覽器的請求
+        # 建立請求，並加入完整的瀏覽器模擬標頭，讓 YouTube 伺服器放行
         req = urllib.request.Request(
-            f"https://www.youtube.com/channel/{channel_id}/videos",
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+            rss_url,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7'
+            }
         )
         with urllib.request.urlopen(req, timeout=15) as response:
-            html = response.read().decode('utf-8')
+            xml_content = response.read().decode('utf-8')
             
-        # 從網頁原始碼中精確定位最新影片 ID
-        video_ids = re.findall(r'"videoId":"([^"]{11})"', html)
+        # 從 XML 內容中精確提取最新影片的 yt:videoId 標籤
+        video_ids = re.findall(r'<yt:videoId>([^<]+)</yt:videoId>', xml_content)
         if video_ids:
-            # 拿到最新的一支影片 ID
-            latest_id = video_ids[0]
-            return latest_id
-        else:
-            print("⚠️ 無法從網頁解析出影片 ID，啟動備用 RSS 方案...")
-            rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
-            req_rss = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req_rss, timeout=15) as res_rss:
-                rss_html = res_rss.read().decode('utf-8')
-            rss_ids = re.findall(r'<yt:videoId>([^<]+)</yt:videoId>', rss_html)
-            if rss_ids:
-                return rss_ids[0]
+            return video_ids[0]
             
-        print("❌ 所有抓取方案均失敗")
+        # 備用方案：如果標籤格式有變，嘗試從連結中抓取
+        video_urls = re.findall(r'<link rel="alternate" href="https://www.youtube.com/watch\?v=([^"]+)"/>', xml_content)
+        if video_urls:
+            return video_urls[0]
+            
+        print("❌ 無法從 RSS 內容中解析出任何影片 ID")
         return None
     except Exception as e:
-        print(f"❌ 抓取過程發生異常: {str(e)}")
+        print(f"❌ 抓取 RSS 過程發生異常: {str(e)}")
         return None
 
 def upload_to_notion(token, database_id, video_title, video_url, ai_content):
@@ -78,15 +75,15 @@ def upload_to_notion(token, database_id, video_title, video_url, ai_content):
         print(f"❌ 同步 Notion 失敗: {str(e)}")
 
 def main():
-    print("🚀 開始自動偵測最新影片...")
-    video_id = get_latest_video_via_api(CHANNEL_ID)
+    print("🚀 開始偵測 YouTube 頻道的最新影片...")
+    video_id = get_latest_video_id(RSS_URL)
     if not video_id:
         print("❌ 無法獲取影片 ID，程式終止。")
         return
         
     video_url = f"https://www.youtube.com/watch?v={video_id}"
     video_title = f"早晨財經速解讀最新影片 (ID: {video_id})"
-    print(f"🎯 成功獲取影片 ID: {video_id}")
+    print(f"🎯 成功獲取 YouTube 影片 ID: {video_id}")
     
     try:
         # 抓取字幕
