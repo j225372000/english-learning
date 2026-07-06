@@ -1,29 +1,32 @@
-name: Daily YouTube Channel Monitor
+name: Universal AI Agent Workflow
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 每日例行自動排程
+    - cron: '0 2 * * *'
   workflow_dispatch:
-    # 🎛️ 動態手動輸入面板
     inputs:
       video_id:
         description: '請輸入 YouTube 影片 11 碼 ID'
         required: true
         default: 'dQw4w9WgXcQ'
       video_type:
-        description: '請選擇 Prompt 範本名稱 (例如: english / general)'
+        description: '請選擇 Prompt 大腦範本 (english / fed / general)'
         required: true
         default: 'general'
+      video_output:
+        description: '請選擇輸出技能形式 (markdown / line)'
+        required: true
+        default: 'markdown'
 
 jobs:
-  monitor-channel:
+  run-agent:
     runs-on: ubuntu-latest
     
     steps:
     - name: 📥 Checkout Repository
       uses: actions/checkout@v4
       with:
-        persist-credentials: true  # 確保 GitHub 虛擬機擁有完整的寫入金鑰
+        persist-credentials: true
 
     - name: 🐍 Set up Python
       uses: actions/setup-python@v5
@@ -35,37 +38,34 @@ jobs:
         python -m pip install --upgrade pip
         pip install google-genai
 
-    - name: ⚙️ Run Script with Dynamic Inputs
+    - name: ⚙️ Run Universal Agent Core
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         VIDEO_ID: ${{ github.event.inputs.video_id }}
         VIDEO_TYPE: ${{ github.event.inputs.video_type }}
+        VIDEO_OUTPUT: ${{ github.event.inputs.video_output }}
+        # 如果未來要用 LINE，可以在 Secrets 補上 LINE_CHANNEL_ACCESS_TOKEN
+        LINE_TOKEN: ${{ secrets.LINE_TOKEN }} 
       run: |
-        # 自動排程保底機制
         if [ -z "$VIDEO_ID" ]; then
           export VIDEO_ID="dQw4w9WgXcQ"
           export VIDEO_TYPE="general"
+          export VIDEO_OUTPUT="markdown"
         fi
-        python process_video.py
+        python agent_core.py
 
-    - name: 💾 Automatically Commit and Push
+    - name: 💾 Automatically Commit and Push (Only for Markdown output)
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        
-        # 強制與遠端專案同步狀態，防止虛擬機衝突
         git fetch origin
-        
-        # 暴力捕獲所有產出的新 Markdown 檔案（支援大寫、小寫與表情符號檔名）
         git add *.md || true
         git add 🚨*.md || true
-        
-        # 檢查暫存區有沒有東西，有就強制推回專案首頁
         if ! git diff --cached --quiet; then
           git commit -m "✨ AI自動更新：新增學習筆記 [skip ci]"
           git push origin HEAD:${{ github.ref }}
-          echo "🚀 [成功] 檔案已強力同步推回 Code 首頁！"
+          echo "🚀 [成功] Markdown 檔案已強力同步推回 Code 首頁！"
         else
-          echo "📭 沒有偵測到任何新生成的筆記檔案，跳過 Commit。"
+          echo "📭 沒有偵測到新 Markdown 檔案，跳過 Commit。"
         fi
