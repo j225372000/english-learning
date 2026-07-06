@@ -1,17 +1,11 @@
 import os
 import urllib.request
-import urllib.error
 import json
 from datetime import datetime
 from google import genai
 
 def get_video_data_via_official_api(video_id, api_key):
-    clean_id = video_id.strip().replace('\r', '').replace('\n', '')
-    clean_key = api_key.strip().replace('\r', '').replace('\n', '') if api_key else ""
-    
-    # 🎯【核心修正】：補上正確的 /youtube/v3/ 路由路徑
-    url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={clean_id}&key={clean_key}"
-    
+    url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={api_key}"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=15) as response:
@@ -51,20 +45,35 @@ def main():
         print("❌ 缺少必要的環境變數 (YOUTUBE_API_KEY 或 GEMINI_API_KEY)")
         return
 
-    # 請求 YouTube 官方數據
+    # 請求 YouTube 官方數據取得標題
     video_title, video_description = get_video_data_via_official_api(video_id, yt_api_key)
     if not video_title:
         print("🛑 無法取得正確的影片素材，程式終止。")
         return
 
-    print(f"🎯 成功載入影片: 【{video_title}】")
+    print(f"🎯 成功載入影片標題: 【{video_title}】")
     
     try:
-        # 呼叫 Gemini 生成內容
+        # 呼叫 Gemini
         client = genai.Client(api_key=api_key)
-        final_prompt = f"{selected_prompt}\n\n--- \n影片網址：https://www.youtube.com/watch?v={video_id}\n影片官方標題：{video_title}\n影片官方說明欄內容：\n{video_description}"
         
-        print(f"🤖 正在呼叫 Gemini AI 進行多模態邏輯提煉...")
+        # 🌟【終極時空防禦修正】：強制提醒 AI 當前時間，並給予影片直連網址，要求它直接分析音訊/影片內容
+        time_context = f"【極重要時空背景】：當前時間是 2026 年 7 月。這場影片標題為 {video_title} 的記者會已經完全召開並結束。這不是未來的事件！請直接根據以下提供的 YouTube 影片網址，利用你的多模態能力直接分析影片與音訊內容，提取真實發生的鮑爾原話，絕對不要編造或拒絕回答。"
+        
+        final_prompt = f"""
+        {time_context}
+        
+        {selected_prompt}
+        
+        --- 
+        【待分析的影片真實數據】
+        影片網址：https://www.youtube.com/watch?v={video_id}
+        影片官方標題：{video_title}
+        影片官方說明欄內容（僅供參考）：
+        {video_description}
+        """
+        
+        print(f"🤖 正在呼叫 Gemini AI 並下達時空防禦指令，直接進行多模態音訊/影片分析...")
         response = client.models.generate_content(model='gemini-2.5-flash', contents=final_prompt)
         
         current_date = datetime.now().strftime("%Y%m%d")
