@@ -2,19 +2,18 @@ import os
 import re
 import feedparser
 import requests
-from youtube_transcript_api import YouTubeTranscriptApi
+import youtube_transcript_api  # 修改點 1：改用標準 import 方式
 from google import genai
 
 # =================【填入你想監控的 YouTube 頻道 ID】=================
-# 例如：打開頻道主頁，網址背後的 UCxxxxxx 字串
-CHANNEL_ID = "UC0lbAQVpenvfA2QqzsRtL_g" 
+CHANNEL_ID = "UC01bAQVpenvfA2QqzSRtL_g" 
 # =========================================================================
 
 def get_latest_youtube_video(channel_id):
     rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
     feed = feedparser.parse(rss_url)
     if not feed.entries:
-        print("無法取得頻道資料，請檢查 CHANNEL_ID 是否正確。")
+        print("無法取得頻道資料。")
         return None, None
     latest_entry = feed.entries[0]
     title = latest_entry.title
@@ -61,12 +60,16 @@ def main():
     print(f"偵測到最新影片：【{video_title}】")
     
     try:
+        # 核心修正點 2：直接使用模組底下的小寫函式抓取，避開類別封裝問題
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['en', 'zh-TW', 'zh-CN'])
+            transcript_list = youtube_transcript_api.get_transcript(video_id, languages=['en', 'zh-TW', 'zh-CN'])
         except Exception:
-            transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+            transcript_list = youtube_transcript_api.get_transcript(video_id)
+            
         transcript_text = " ".join([t['text'] for t in transcript_list])
+        print("成功取得影片逐字稿！")
         
+        # 2. 呼叫 Gemini AI
         api_key = os.environ.get("GEMINI_API_KEY")
         client = genai.Client(api_key=api_key)
         
@@ -90,6 +93,7 @@ def main():
         response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         ai_result = response.text
         
+        # 3. 讀取 Notion 憑證並上傳
         notion_token = os.environ.get("NOTION_TOKEN")
         notion_db_id = os.environ.get("NOTION_DATABASE_ID")
         
