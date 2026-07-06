@@ -1,27 +1,15 @@
 import os
 import re
-import urllib.request
 import json
-import feedparser
+import urllib.request
+import youtube_transcript_api
 from google import genai
 
-# 使用回你一開始完全正確的 RSS 網址與頻道 ID
-RSS_URL = "https://www.youtube.com/feeds/videos.xml?channel_id=UC01bAQVpenvfA2QqzSRtL_g"
-
-def get_latest_youtube_video(rss_url):
-    try:
-        req = urllib.request.Request(rss_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=15) as response:
-            feed = feedparser.parse(response.read())
-        if not feed.entries:
-            return None, None
-        latest_entry = feed.entries[0]
-        title = latest_entry.title
-        video_id = latest_entry.yt_videoid if hasattr(latest_entry, 'yt_videoid') else latest_entry.link.split("v=")[1]
-        return video_id, title
-    except Exception as e:
-        print(f"❌ 抓取 RSS 發生異常: {str(e)}")
-        return None, None
+# =================【最原始的做法：直接在這裡填入 11 碼影片 ID】=================
+# 每次你想跑哪一支影片的筆記，就直接回來把這行雙引號裡面的 ID 換掉。
+# 例如網址是 https://www.youtube.com/watch?v=dQw4w9WgXcQ ，ID 就是 dQw4w9WgXcQ
+VIDEO_ID = "UC0lbAQVpenvfA2QqzsRtL_g" 
+# =========================================================================
 
 def upload_to_notion(token, database_id, video_title, video_url, ai_content):
     url = "https://api.notion.com/v1/pages"
@@ -56,18 +44,29 @@ def upload_to_notion(token, database_id, video_title, video_url, ai_content):
         print(f"❌ 同步 Notion 失敗: {str(e)}")
 
 def main():
-    print("🚀 開始自動偵測最新影片...")
-    video_id, video_title = get_latest_youtube_video(RSS_URL)
-    if not video_id:
-        print("❌ 無法獲取影片資料。")
-        return
-        
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-    print(f"🎯 成功獲取影片：【{video_title}】")
+    print(f"🚀 啟動原始模式，直接處理影片 ID: {VIDEO_ID}")
+    
+    video_url = f"https://www.youtube.com/watch?v={VIDEO_ID}"
+    video_title = f"YouTube 影片學習筆記 (ID: {VIDEO_ID})"
     
     try:
-        # 徹底移除 youtube-transcript-api 阻礙！
-        # 直接把 YouTube 網址給 Gemini，讓 Gemini 去理解內容並生成繁體中文筆記
+        # 嘗試抓取字幕，如果真的沒有字幕就交給 Gemini 2.5 Flash 直接看影片
+        try:
+            transcript_list = youtube_transcript_api.get_transcript(VIDEO_ID, languages=['en', 'zh-TW', 'zh-CN'])
+        except Exception:
+            try:
+                transcript_list = youtube_transcript_api.get_transcript(VIDEO_ID)
+            except Exception:
+                transcript_list = []
+                
+        if transcript_list:
+            transcript_text = " ".join([t['text'] for t in transcript_list])
+            print("📝 成功取得影片逐字稿！")
+        else:
+            transcript_text = "此影片無提供直接字幕檔，請直接分析影片內容。"
+            print("⚠️ 影片無提供直接字幕檔，將交由 Gemini 2.5 進行多模態分析。")
+        
+        # 呼叫 Gemini AI
         api_key = os.environ.get("GEMINI_API_KEY")
         client = genai.Client(api_key=api_key)
         
@@ -83,11 +82,11 @@ def main():
         ## 🧠 4. 關鍵思維或金句延伸 (Key Takeaway)
         - 點出影片最啟發人心的 1-2 句話。
 
-        影片連結：
-        {video_url}
+        影片連結：{video_url}
+        逐字稿內容（若有）：{transcript_text}
         """
         
-        print("🤖 正在呼叫 Gemini AI 生成筆記（此步驟免逐字稿，會花費 15-30 秒）...")
+        print("🤖 正在呼叫 Gemini AI 生成筆記...")
         response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         ai_result = response.text
         
@@ -100,7 +99,7 @@ def main():
         else:
             print("⚠️ 警告: 缺少 Notion 設定，僅於本地生成備份檔案。")
             
-        with open(f"🚨每日更新_{video_id}.md", "w", encoding="utf-8") as f:
+        with open(f"🚨個人筆記_{VIDEO_ID}.md", "w", encoding="utf-8") as f:
             f.write(ai_result)
             
     except Exception as e:
