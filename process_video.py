@@ -1,56 +1,20 @@
 import os
 import re
-import json
 import urllib.request
 import youtube_transcript_api
 from google import genai
 
-# =================【最原始的做法：直接在這裡填入 11 碼影片 ID】=================
+# =================【直接在這裡填入 11 碼影片 ID】=================
 # 每次你想跑哪一支影片的筆記，就直接回來把這行雙引號裡面的 ID 換掉。
-# 例如網址是 https://www.youtube.com/watch?v=dQw4w9WgXcQ ，ID 就是 dQw4w9WgXcQ
 VIDEO_ID = "UC0lbAQVpenvfA2QqzsRtL_g" 
 # =========================================================================
 
-def upload_to_notion(token, database_id, video_title, video_url, ai_content):
-    url = "https://api.notion.com/v1/pages"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28"
-    }
-    page_data = {
-        "parent": {"database_id": database_id},
-        "properties": {
-            "Name": {"title": [{"text": {"content": video_title}}]},
-            "URL": {"url": video_url},
-            "Status": {"status": {"name": "Not started"}}
-        },
-        "children": [
-            {
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                }
-            } for chunk in re.findall(r'.{1,2000}', ai_content, re.DOTALL)
-        ]
-    }
-    req = urllib.request.Request(url, data=json.dumps(page_data).encode('utf-8'), headers=headers, method='POST')
-    try:
-        with urllib.request.urlopen(req) as response:
-            if response.status == 200:
-                print("✅ 成功同步到 Notion 資料庫！")
-    except Exception as e:
-        print(f"❌ 同步 Notion 失敗: {str(e)}")
-
 def main():
-    print(f"🚀 啟動原始模式，直接處理影片 ID: {VIDEO_ID}")
-    
+    print(f"🚀 啟動純檔案模式，直接處理影片 ID: {VIDEO_ID}")
     video_url = f"https://www.youtube.com/watch?v={VIDEO_ID}"
-    video_title = f"YouTube 影片學習筆記 (ID: {VIDEO_ID})"
     
     try:
-        # 嘗試抓取字幕，如果真的沒有字幕就交給 Gemini 2.5 Flash 直接看影片
+        # 嘗試抓取字幕
         try:
             transcript_list = youtube_transcript_api.get_transcript(VIDEO_ID, languages=['en', 'zh-TW', 'zh-CN'])
         except Exception:
@@ -90,17 +54,11 @@ def main():
         response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         ai_result = response.text
         
-        # 讀取 Notion 憑證並上傳
-        notion_token = os.environ.get("NOTION_TOKEN")
-        notion_db_id = os.environ.get("NOTION_DATABASE_ID")
-        
-        if notion_token and notion_db_id:
-            upload_to_notion(notion_token, notion_db_id, video_title, video_url, ai_result)
-        else:
-            print("⚠️ 警告: 缺少 Notion 設定，僅於本地生成備份檔案。")
-            
-        with open(f"🚨個人筆記_{VIDEO_ID}.md", "w", encoding="utf-8") as f:
+        # 輸出成 Markdown 檔案
+        filename = f"🚨每日更新_{VIDEO_ID}.md"
+        with open(filename, "w", encoding="utf-8") as f:
             f.write(ai_result)
+        print(f"✨ 【成功】筆記已成功寫入檔案：{filename}")
             
     except Exception as e:
         print(f"❌ 執行失敗: {str(e)}")
