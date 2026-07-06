@@ -57,8 +57,7 @@ def main():
         # 呼叫 Gemini
         client = genai.Client(api_key=api_key)
         
-        # 🌟【終極時空防禦修正】：強制提醒 AI 當前時間，並給予影片直連網址，要求它直接分析音訊/影片內容
-        time_context = f"【極重要時空背景】：當前時間是 2026 年 7 月。這場影片標題為 {video_title} 的記者會已經完全召開並結束。這不是未來的事件！請直接根據以下提供的 YouTube 影片網址，利用你的多模態能力直接分析影片與音訊內容，提取真實發生的鮑爾原話，絕對不要編造或拒絕回答。"
+        time_context = f"【極重要時空背景】：當前時間是 2026 年 7 月。這場影片標題為 {video_title} 的記者會已經完全召開並結束。這不是未來的事件！請直接根據以下提供的 YouTube 影片網址，利用你的多模態能力直接分析影片與音訊內容，提取真實發生的主席原話，絕對不要編造或拒絕回答。"
         
         final_prompt = f"""
         {time_context}
@@ -73,8 +72,9 @@ def main():
         {video_description}
         """
         
-        print(f"🤖 正在呼叫 Gemini AI 並下達時空防禦指令，直接進行多模態音訊/影片分析...")
-        response = client.models.generate_content(model='gemini-2.5-flash', contents=final_prompt)
+        # 🎯【模型名稱修正】：修正為與你網頁對齊的全新主力 gemini-3.5-flash
+        print(f"🤖 正在呼叫 Gemini AI (gemini-3.5-flash) 進行多模態音訊/影片分析...")
+        response = client.models.generate_content(model='gemini-3.5-flash', contents=final_prompt)
         
         current_date = datetime.now().strftime("%Y%m%d")
         filename = f"🚨{prompt_type.upper()}_{current_date}_{video_id}.md"
