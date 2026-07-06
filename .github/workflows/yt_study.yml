@@ -11,7 +11,7 @@ on:
         required: true
         default: 'dQw4w9WgXcQ'
       video_type:
-        description: '請選擇 Prompt 範本名稱 (例如: english / finance / general)'
+        description: '請選擇 Prompt 範本名稱 (例如: english / general)'
         required: true
         default: 'general'
 
