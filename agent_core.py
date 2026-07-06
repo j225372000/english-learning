@@ -40,8 +40,8 @@ def main():
         
         final_prompt = f"{time_context}\n\n{selected_prompt}\n\n---\n素材標題：{source_title}\n{media_url_context}素材文本內容：\n{source_content}"
         
-        print(f"🤖 正在呼叫 Gemini AI (gemini-3.5-pro) 進行核心推理...")
-        response = client.models.generate_content(model='gemini-3.5-flash', contents=final_prompt)
+        print(f"🤖 正在呼叫 Gemini AI (gemini-2.5-flash) 進行核心推理...")
+        response = client.models.generate_content(model='gemini-2.5-flash', contents=final_prompt)
         ai_result = response.text
     except Exception as e:
         print(f"❌ Gemini 推理失敗: {str(e)}")
