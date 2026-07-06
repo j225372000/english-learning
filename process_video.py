@@ -7,7 +7,7 @@ from google import genai
 
 # =================【填入你想監控的 YouTube 頻道 ID】=================
 # 例如：打開頻道主頁，網址背後的 UCxxxxxx 字串
-CHANNEL_ID = "填入你想追蹤的頻道ID" 
+CHANNEL_ID = "UC0lbAQVpenvfA2QqzsRtL_g" 
 # =========================================================================
 
 def get_latest_youtube_video(channel_id):
