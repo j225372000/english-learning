@@ -5,10 +5,14 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
-      video_id:
-        description: '請輸入 YouTube 影片 11 碼 ID'
+      input_data:
+        description: '請輸入素材資料 (YouTube ID / 網頁網址 / 檔案路徑)'
         required: true
         default: 'dQw4w9WgXcQ'
+      input_type:
+        description: '請選擇輸入技能類型 (youtube / web / pdf)'
+        required: true
+        default: 'youtube'
       video_type:
         description: '請選擇 Prompt 大腦範本 (english / fed / general)'
         required: true
@@ -27,6 +31,8 @@ jobs:
       uses: actions/checkout@v4
       with:
         persist-credentials: true
+        # 🔑 加上這行，1秒破解 GitHub 官方對 Actions 虛擬機的 429 限流
+        token: ${{ secrets.GITHUB_TOKEN }} 
 
     - name: 🐍 Set up Python
       uses: actions/setup-python@v5
@@ -36,26 +42,26 @@ jobs:
     - name: 📦 Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install google-genai
+        pip install google-genai pypdf
 
     - name: ⚙️ Run Universal Agent Core
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        VIDEO_ID: ${{ github.event.inputs.video_id }}
+        INPUT_DATA: ${{ github.event.inputs.input_data }}
+        INPUT_TYPE: ${{ github.event.inputs.input_type }}
         VIDEO_TYPE: ${{ github.event.inputs.video_type }}
         VIDEO_OUTPUT: ${{ github.event.inputs.video_output }}
-        # 如果未來要用 LINE，可以在 Secrets 補上 LINE_CHANNEL_ACCESS_TOKEN
-        LINE_TOKEN: ${{ secrets.LINE_TOKEN }} 
       run: |
-        if [ -z "$VIDEO_ID" ]; then
-          export VIDEO_ID="dQw4w9WgXcQ"
+        if [ -z "$INPUT_DATA" ]; then
+          export INPUT_DATA="dQw4w9WgXcQ"
+          export INPUT_TYPE="youtube"
           export VIDEO_TYPE="general"
           export VIDEO_OUTPUT="markdown"
         fi
         python agent_core.py
 
-    - name: 💾 Automatically Commit and Push (Only for Markdown output)
+    - name: 💾 Automatically Commit and Push
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -63,9 +69,6 @@ jobs:
         git add *.md || true
         git add 🚨*.md || true
         if ! git diff --cached --quiet; then
-          git commit -m "✨ AI自動更新：新增學習筆記 [skip ci]"
+          git commit -m "✨ AI自動更新：新增分析報告 [skip ci]"
           git push origin HEAD:${{ github.ref }}
-          echo "🚀 [成功] Markdown 檔案已強力同步推回 Code 首頁！"
-        else
-          echo "📭 沒有偵測到新 Markdown 檔案，跳過 Commit。"
         fi
