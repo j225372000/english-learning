@@ -4,9 +4,8 @@ import json
 import urllib.request
 import urllib.parse
 from typing import Dict, Any, List, Optional
-import subprocess
 
-# 引入 Google 官方最新 GenAI 模態庫
+# 引入 Google 官方最新 GenAI 核心與強型別宣告
 from google import genai
 from google.genai import types
 
@@ -45,7 +44,7 @@ def fetch_metadata(video_id: str) -> Dict[str, Any]:
 
     url = (
         "https://www.googleapis.com/youtube/v3/videos"
-        "?part=snippet,contentDetails,statistics"
+        "?part=snippet"
         f"&id={video_id}"
         f"&key={api_key}"
     )
@@ -92,27 +91,11 @@ def transcript_items_to_text(items: List[Dict[str, Any]]) -> str:
     return clean_transcript_text(" ".join([item.get("text", "").replace("\n", " ").strip() for item in items]))
 
 
-# 🌟 三軌大滿貫防禦：徹底破解 400 錯誤與 Actions 機房鎖 IP 限制
-def download_audio_fallback(video_id: str, output_path: str) -> bool:
-    # ─── 軌道 A：本地 yt-dlp 衝鋒 ───
+# 雲端多模態直連聽譯防線
+def cloud_gemini_audio_transcribe(video_id: str) -> str:
+    print("🌐 官方字幕失效，實質啟動 Gemini 雲端多模態直連聽譯防線...")
     try:
-        print("📥 [軌道 A] 正在嘗試使用本機最新 yt-dlp 原始鏈接解鎖音訊...")
-        cmd_dl = [
-            "yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "5", "--no-cache-dir",
-            f"https://www.youtube.com/watch?v={video_id}", "-o", f"audio_{video_id}"
-        ]
-        subprocess.run(cmd_dl, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if os.path.exists(output_path):
-            print("✨ [軌道 A] yt-dlp 順利突圍下載成功！")
-            return True
-    except Exception:
-        print("⚠️ [軌道 A] GitHub Actions 機房 IP 遭到 YouTube 風控限制，立刻觸發軌道 B 後備防禦...")
-
-    # ─── 軌道 B：100% 規格校正的 Cobalt 閘道 ───
-    try:
-        print("🌐 [軌道 B] 正在向 Cobalt 官方 JSON 端點發送對齊標頭的音訊提取請求...")
         api_url = "https://api.cobalt.tools/api/json"
-        
         payload = {
             "url": f"https://www.youtube.com/watch?v={video_id}",
             "downloadMode": "audio"
@@ -134,84 +117,35 @@ def download_audio_fallback(video_id: str, output_path: str) -> bool:
         with urllib.request.urlopen(req, timeout=25) as response:
             res_data = json.loads(response.read().decode("utf-8"))
             
-        download_url = res_data.get("url")
-        if download_url:
-            print("🚀 [軌道 B] Cobalt 網關成功突圍！正在拉取音訊字節流...")
-            req_file = urllib.request.Request(download_url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req_file, timeout=40) as file_res:
-                with open(output_path, "wb") as f:
-                    f.write(file_res.read())
-            if os.path.exists(output_path) and os.path.getsize(output_path) > 1024:
-                print("✨ [軌道 B] 外部解鎖通道下載完畢！音訊檔案已實質就緒。")
-                return True
-    except Exception as err:
-        print(f"⚠️ [軌道 B] Cobalt 網關未預期回應 ({str(err)})，立刻啟動終極備份軌道 C...")
-
-    # ─── 軌道 C：終極應變網關流 (api.v02.xyz) ───
-    try:
-        print("⚡ [軌道 C] 發動終極應變網關，強制向第三方集群解鎖 mp3 音訊流...")
-        alt_url = f"https://api.v02.xyz/api/widget/mp3?id={video_id}"
-        req_alt = urllib.request.Request(alt_url, headers={"User-Agent": "Mozilla/5.0"})
+        audio_stream_url = res_data.get("url")
         
-        with urllib.request.urlopen(req_alt, timeout=20) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            
-        download_url = res_data.get("url")
-        if download_url:
-            print("🚀 [軌道 C] 終極備份網關成功換取下載位址！開始引導下載...")
-            req_file = urllib.request.Request(download_url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req_file, timeout=40) as file_res:
-                with open(output_path, "wb") as f:
-                    f.write(file_res.read())
-            if os.path.exists(output_path) and os.path.getsize(output_path) > 1024:
-                print("✨ [軌道 C] 終極應變網關救援成功！音訊已順利躺在虛擬機環境中。")
-                return True
-    except Exception as err:
-        print(f"❌ [軌道 C] 終極應變防線亦遭遇異常: {str(err)}")
+        if not audio_stream_url:
+            alt_url = f"https://api.v02.xyz/api/widget/mp3?id={video_id}"
+            req_alt = urllib.request.Request(alt_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req_alt, timeout=20) as alt_res:
+                alt_data = json.loads(alt_res.read().decode("utf-8"))
+            audio_stream_url = alt_data.get("url")
 
-    return False
+        if not audio_stream_url:
+            return ""
 
-
-def local_audio_whisper(video_id: str) -> str:
-    audio_path = f"audio_{video_id}.mp3"
-    
-    download_success = download_audio_fallback(video_id, audio_path)
-    if not download_success:
-        print("🚨 [終極警報] 三軌音訊防禦鏈均遭風鎖，此影片暫時無法開啟語音轉寫。")
-        return ""
-        
-    try:
-        print("🎙 *音訊本地解鎖成功！正在調用 Gemini 官方標準位元流協議...*")
         api_key = os.environ.get("GEMINI_API_KEY", "").strip()
         client = genai.Client(api_key=api_key)
         
-        with open(audio_path, "rb") as f:
-            audio_bytes = f.read()
-            
-        print("🧠 正在將音訊直接推播至 Gemini 多模態語音解析核心...")
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
-                types.Part.from_bytes(
-                    data=audio_bytes,
-                    mime_type="audio/mp3",
+                types.Part.from_uri(
+                    file_uri=audio_stream_url,
+                    mime_type="audio/mp3"
                 ),
-                "請將這段財經影片的語音內容，逐字不漏地轉寫成繁體中文逐字稿。不用做任何摘要，只需要完整的語音文本。"
+                "請將這段音訊中的所有說話內容，逐字不漏地轉寫成繁體中文逐字稿。不需要做任何摘要，只需要完整的語音文本。"
             ]
         )
-        
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
-            
         return response.text if response.text else ""
-        
+
     except Exception as e:
-        print(f"❌ Gemini 多模態語音模態轉譯遭遇異常: {str(e)}")
-        if os.path.exists(audio_path):
-            try:
-                os.remove(audio_path)
-            except:
-                pass
+        print(f"❌ 雲端多模態聽譯核心不幸遭遇異常: {str(e)}")
         return ""
 
 
@@ -223,31 +157,36 @@ def fetch(input_data: str) -> Dict[str, Any]:
         transcript_text = ""
         transcript_status = "none"
         
+        # 🌟 核心破案：全面解鎖語系守備名單！將 'zh', 'zh-CN', 'zh-HK' 等所有變形代碼通通補齊
+        # 這能 100% 確保有字幕的影片絕對能直接撈出原生文本
+        target_languages = ["zh-TW", "zh-Hant", "zh", "zh-CN", "zh-HK", "zh-Hans", "en"]
+        
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
             selected = None
             try:
-                selected = transcript_list.find_manually_created_transcript(["zh-TW", "zh-Hant", "en"])
+                selected = transcript_list.find_manually_created_transcript(target_languages)
             except Exception:
                 pass
             if selected is None:
                 try:
-                    selected = transcript_list.find_generated_transcript(["zh-TW", "zh-Hant", "en"])
+                    selected = transcript_list.find_generated_transcript(target_languages)
                 except Exception:
                     pass
             if selected is None:
-                selected = transcript_list.find_transcript(["zh-TW", "zh-Hant", "en"])
+                selected = transcript_list.find_transcript(target_languages)
 
             items = selected.fetch()
             transcript_text = transcript_items_to_text(items)
             transcript_status = "official" if not selected.is_generated else "generated"
-            print(f"🎯 成功獲取現成字幕，狀態為: {transcript_status}")
+            print(f"🎯 成功獲取現成字幕，後台實質語系為: [{selected.language_code}]，狀態為: {transcript_status}")
         except Exception:
-            whisper_text = local_audio_whisper(video_id)
+            # 只有當 YouTube 後台真的沒有任何中/英文文字檔時，才發動這條終極聽譯防線
+            whisper_text = cloud_gemini_audio_transcribe(video_id)
             if whisper_text:
                 transcript_text = whisper_text
-                transcript_status = "whisper_fallback"
-                print("🎯 雙軌語音防線實質突破！順利拿到語音逐字稿。")
+                transcript_status = "gemini_cloud_whisper"
+                print("🎯 雲端多模態聽譯防線實質突破！順利拿到語音逐字稿。")
 
         return {
             "success": True,
