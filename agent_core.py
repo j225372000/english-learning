@@ -1,16 +1,15 @@
 import os
 import sys
 import time
-from typing import Dict, Any, List
+import re
 
-# 引入 Google 官方最新 GenAI 核心與型別
+# 🌟 引入 Google 官方最新 GenAI 核心與型別
 from google import genai
 from google.genai import types
 
-# 假設你原本專案中有從 skills 目錄引入各個模組
+# 只導入實實存在的 in_yt 組件，徹底消滅 ImportError
 from skills import in_yt
-from skills import in_web
-from skills import in_file
+
 
 def initialize_gemini_client() -> genai.Client:
     """初始化 Gemini 官方客戶端憑證"""
@@ -20,14 +19,15 @@ def initialize_gemini_client() -> genai.Client:
         sys.exit(1)
     return genai.Client(api_key=api_key)
 
+
 def load_system_prompt() -> str:
-    """載入既有的投研分析 Prompt 範本，若無則使用預設的高級財經範本"""
-    # 這裡保留你原本專案中可能存在的 Prompt 讀取邏輯
+    """載入既有的投研分析 Prompt 範本"""
     default_prompt = (
         "你是一位頂級的財經與科技分析師。請針對提供的素材內容，"
         "製作一份結構嚴謹、數據實質、不帶虛浮廢話的繁體中文投研筆記與市場核心解讀。"
     )
     return default_prompt
+
 
 def main():
     print("═══════════════════════════════════════════════════")
@@ -50,41 +50,26 @@ def main():
 
     source_title = ""
     source_content = ""
-    extracted_data = {}
 
-    # 3. 根據不同的輸入類型，分流調度既有功能（100% 保留原本的所有軌道）
+    # 3. 專注調度現有的 YouTube 抓取功能
     try:
         if input_type == "yt":
             print("📥 啟動 YouTube 逐字稿抓取器 (yt)...")
             extracted_data = in_yt.fetch(input_data)
             source_title = extracted_data.get("title", "未命名 YouTube 影片")
             source_content = extracted_data.get("transcript", "")
-            
-        elif input_type == "web":
-            print("📥 啟動網頁內容擷取器 (web)...")
-            extracted_data = in_web.fetch(input_data)
-            source_title = extracted_data.get("title", "未命名網頁")
-            source_content = extracted_data.get("content", "")
-            
-        elif input_type == "file":
-            print("📥 啟動本地檔案解析器 (file)...")
-            extracted_data = in_file.fetch(input_data)
-            source_title = extracted_data.get("filename", "未命名檔案")
-            source_content = extracted_data.get("content", "")
-            
         else:
-            print(f"🚨 錯誤：不支援的輸入類型 '{input_type}'")
+            print(f"⚠️ 提示：目前雲端優化版專注處理 yt 模式，不支援的輸入類型 '{input_type}'")
             sys.exit(1)
 
     except Exception as fetch_err:
-        print(f"❌ 既有組件在擷取資料時發生嚴重異常: {str(fetch_err)}")
-        # 為了防止整個自動化排程崩潰，我們不直接 sys.exit，讓後面大腦有機會自救
+        print(f"❌ 擷取資料時發生異常: {str(fetch_err)}")
 
     # 如果影片沒抓到標題，使用 ID 作為保底標題
     if not source_title and input_type == "yt":
         source_title = f"YouTube 影片 {input_data}"
 
-    # 4. 配置大腦的嘗試優先順序 (2.5-pro 優先，2.5-flash 備援)
+    # 4. 配置大腦的嘗試優先順序
     models_to_try = [
         {"name": "gemini-2.5-pro", "desc": "最強 Pro 深度思考大腦"},
         {"name": "gemini-2.5-flash", "desc": "快速 Flash 突圍大腦"}
@@ -99,12 +84,11 @@ def main():
         print(f"🧠 正在嘗試啟動大腦: {model_info['desc']} ({model_name})...")
         
         success = False
-        # 針對單一大腦進行 3 次暴力重試，防止 429 或 503 伺服器忙碌
         for retry_idx in range(3):
             try:
-                # 🌟 【核心防禦】既有功能完全不影響！只有當模式是 YouTube 且「前面所有的程式碼都抓不到字幕文字」時，才啟動 Google Search 聯網突圍
+                # 🌟 【核心防禦】只有當前面所有的程式碼都抓不到字幕文字時，才啟動 Google Search 聯網突圍
                 if input_type == "yt" and (not source_content or len(source_content.strip()) < 10):
-                    print("🌐 [特種防禦觸發] 偵測到 YouTube 字幕因權限或 IP 風控完全封死，實質發動 Gemini 聯網突圍...")
+                    print("🌐 [特種防禦觸發] 偵測到 YouTube 字幕因權限或 IP 風控未就緒，實質發動 Gemini 聯網突圍...")
                     
                     breaking_prompt = (
                         f"{system_prompt}\n\n"
@@ -119,13 +103,12 @@ def main():
                     response = client.models.generate_content(
                         model=model_name,
                         contents=breaking_prompt,
-                        # 🎯 注入官方唯一的 Google Search 連網工具。大腦會用 Google 自家最高權限的雲端骨幹去讀網頁，100% 避開 401/403 錯誤
                         config=types.GenerateContentConfig(
                             tools=[types.Tool(google_search=types.GoogleSearch())]
                         )
                     )
                 else:
-                    # 常規狀態（web、file 或是成功抓到 YouTube 字幕時），100% 走你原本既有的閉卷投研報告分析
+                    # 成功抓到 YouTube 字幕時，穩穩走常規投研報告分析
                     final_prompt = f"{system_prompt}\n\n目標素材標題: {source_title}\n\n目標素材內容:\n{source_content}"
                     response = client.models.generate_content(
                         model=model_name,
@@ -158,9 +141,8 @@ def main():
         print("🚨 終極警報：所有大腦防線與重試機制全部宣告失敗，未能產生任何分析報告。")
         sys.exit(1)
 
-    # 6. 將大腦生成的深度投研報告實質寫入檔案（維持你原本的輸出邏輯）
+    # 6. 將大腦生成的深度投研報告實質寫入檔案
     try:
-        # 清洗檔名中的不合法字元
         safe_title = re.sub(r'[\\/*?:"<>|]', "_", source_title).replace(" ", "_")[:50]
         output_filename = f"📊_分析報告_{safe_title}.md"
         
@@ -176,6 +158,6 @@ def main():
         print(f"❌ 寫入 Markdown 檔案時發生異常: {str(save_err)}")
         sys.exit(1)
 
+
 if __name__ == "__main__":
-    import re
     main()
