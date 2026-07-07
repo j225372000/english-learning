@@ -356,7 +356,7 @@ def fetch(input_data: str) -> Dict[str, Any]:
         print(f"🎬 YouTube 影片 ID：{video_id}")
         print(f"🎞️ 標題：{metadata.get('title', '')}")
 
-        preferred_langs = ["zh-Hant", "zh-TW", "zh", "en"]
+        preferred_langs = ["en", "zh-TW", "zh-Hant", "zh"]
 
         subtitle_data = download_subtitle_by_ytdlp(url, preferred_langs)
 
