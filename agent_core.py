@@ -23,7 +23,7 @@ def load_system_prompt(video_type: str) -> str:
     對應資料夾：提示/
     """
     prompt_map = {
-        "finance": "提示/finance.txt",
+        "finance": "提示/finance",
         "fed": "提示/fed.txt",
         "english": "提示/english.txt",
         "general": "提示/general.txt",
