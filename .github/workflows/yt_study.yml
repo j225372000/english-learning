@@ -3,6 +3,7 @@ name: Universal AI Agent Workflow
 on:
   schedule:
     - cron: '0 2 * * *'
+
   workflow_dispatch:
     inputs:
       input_data:
@@ -39,7 +40,7 @@ jobs:
       - name: 🐍 Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.11'
 
       - name: 📦 Install Dependencies
         run: |
@@ -53,7 +54,7 @@ jobs:
 
           yt-dlp --version
 
-          pip install --no-cache-dir google-genai pypdf youtube-transcript-api
+          pip install --no-cache-dir google-genai pypdf yt-dlp youtube-transcript-api
 
       - name: ⚙️ Run Universal Agent Core
         env:
