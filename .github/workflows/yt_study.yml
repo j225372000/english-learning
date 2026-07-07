@@ -6,17 +6,20 @@ on:
   workflow_dispatch:
     inputs:
       input_data:
-        description: '請輸入素材資料 (YouTube ID / 網頁網址 / 檔案路徑)'
+        description: '請輸入素材資料 (YouTube ID / YouTube網址 / 網頁網址 / 檔案路徑)'
         required: true
         default: 'dQw4w9WgXcQ'
+
       input_type:
-        description: '請選擇輸入技能類型 (youtube=舊版 / yt=新逐字稿版 / web / pdf)'
+        description: '請選擇輸入技能類型 (yt / web / pdf)'
         required: true
         default: 'yt'
+
       video_type:
-        description: '請選擇 Prompt 大腦範本 (english / fed / general)'
+        description: '請選擇 Prompt 大腦範本 (finance / fed / english / general)'
         required: true
-        default: 'general'
+        default: 'finance'
+
       video_output:
         description: '請選擇輸出技能形式 (markdown / line)'
         required: true
@@ -25,61 +28,70 @@ on:
 jobs:
   run-agent:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: 📥 Checkout Repository
-      uses: actions/checkout@v4
-      with:
-        persist-credentials: true
-        token: ${{ secrets.GITHUB_TOKEN }} # 🛡️ 加上這行，1秒破解 GitHub 官方對 Actions 虛擬機的 429 限流
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: 📦 Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        
-        # 🌟 1. 安裝 Linux 系統級音訊轉碼器，這是處理音訊的絕對必備組件
-        sudo apt-get update && sudo apt-get install -y ffmpeg
-        
-        # 🌟 2. 【終極解鎖】跳過標準 pip，直接去 yt-dlp 官方 GitHub 撈最新二進位執行檔，徹底繞過所有舊版本封鎖與 status 1 錯誤
-        sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
-        sudo chmod a+rx /usr/local/bin/yt-dlp
-        
-        # 🌟 3. 實質檢查版本，確保安裝完全成功
-        yt-dlp --version
-        
-        # 4. 安裝其餘 Python 核心套件 (加入 --no-cache-dir 防止抓到舊版殘留快取)
-        pip install --no-cache-dir google-genai pypdf youtube-transcript-api
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
 
-    - name: ⚙️ Run Universal Agent Core
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        INPUT_DATA: ${{ github.event.inputs.input_data }}
-        INPUT_TYPE: ${{ github.event.inputs.input_type }}
-        VIDEO_TYPE: ${{ github.event.inputs.video_type }}
-        VIDEO_OUTPUT: ${{ github.event.inputs.video_output }}
-      run: |
-        if [ -z "$INPUT_DATA" ]; then
-          export INPUT_DATA="dQw4w9WgXcQ"
-          export INPUT_TYPE="yt"
-          export VIDEO_TYPE="general"
-          export VIDEO_OUTPUT="markdown"
-        fi
-        python agent_core.py
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-    - name: 💾 Automatically Commit and Push
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git fetch origin
-        git add *.md || true
-        git add 🚨*.md || true
-        if ! git diff --cached --quiet; then
-          git commit -m "✨ AI自動更新：新增分析報告 [skip ci]"
-          git push origin HEAD:${{ github.ref }}
-        fi
+          sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
+
+          yt-dlp --version
+
+          pip install --no-cache-dir google-genai pypdf youtube-transcript-api
+
+      - name: ⚙️ Run Universal Agent Core
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          INPUT_DATA: ${{ github.event.inputs.input_data }}
+          INPUT_TYPE: ${{ github.event.inputs.input_type }}
+          VIDEO_TYPE: ${{ github.event.inputs.video_type }}
+          VIDEO_OUTPUT: ${{ github.event.inputs.video_output }}
+        run: |
+          if [ -z "$INPUT_DATA" ]; then
+            export INPUT_DATA="dQw4w9WgXcQ"
+            export INPUT_TYPE="yt"
+            export VIDEO_TYPE="finance"
+            export VIDEO_OUTPUT="markdown"
+          fi
+
+          echo "INPUT_DATA=$INPUT_DATA"
+          echo "INPUT_TYPE=$INPUT_TYPE"
+          echo "VIDEO_TYPE=$VIDEO_TYPE"
+          echo "VIDEO_OUTPUT=$VIDEO_OUTPUT"
+
+          python agent_core.py
+
+      - name: 💾 Automatically Commit and Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          git fetch origin
+
+          git add *.md || true
+          git add "📊_"*.md || true
+          git add "🚨"*.md || true
+
+          if ! git diff --cached --quiet; then
+            git commit -m "✨ AI自動更新：新增分析報告 [skip ci]"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "沒有新的 Markdown 檔案需要提交。"
+          fi
