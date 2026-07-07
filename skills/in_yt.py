@@ -1,34 +1,38 @@
 import os
 import re
-import json
-import html
 import glob
-import urllib.request
+import html
 import urllib.parse
 from typing import Dict, Any, List, Optional
 
 import yt_dlp
 
 
+# =========================
+# 1. 基礎工具
+# =========================
+
 def extract_video_id(input_data: str) -> str:
+    """
+    支援：
+    - YouTube video_id
+    - https://www.youtube.com/watch?v=xxxx
+    - https://youtu.be/xxxx
+    - shorts / live
+    - 含 &t=561s 的網址
+    """
     text = input_data.strip()
 
-    if len(text) == 11 and re.fullmatch(r"[a-zA-Z0-9_-]{11}", text):
+    if re.fullmatch(r"[a-zA-Z0-9_-]{11}", text):
         return text
-
-    if "v=" in text:
-        match = re.search(r"v=([a-zA-Z0-9_-]{11})", text)
-        if match:
-            return match.group(1)
 
     parsed = urllib.parse.urlparse(text)
 
     if "youtube.com" in parsed.netloc:
-        if parsed.path == "/watch":
-            query = urllib.parse.parse_qs(parsed.query)
-            video_id = query.get("v", [""])[0]
-            if video_id:
-                return video_id
+        query = urllib.parse.parse_qs(parsed.query)
+
+        if "v" in query and query["v"]:
+            return query["v"][0]
 
         if parsed.path.startswith("/shorts/"):
             return parsed.path.split("/shorts/")[1].split("/")[0]
@@ -39,53 +43,16 @@ def extract_video_id(input_data: str) -> str:
     if "youtu.be" in parsed.netloc:
         return parsed.path.strip("/").split("/")[0]
 
-    return text
+    match = re.search(r"([a-zA-Z0-9_-]{11})", text)
+    if match:
+        return match.group(1)
+
+    raise ValueError("無法解析 YouTube video_id")
 
 
 def build_youtube_url(input_data: str) -> str:
     video_id = extract_video_id(input_data)
     return f"https://www.youtube.com/watch?v={video_id}"
-
-
-def fetch_metadata(video_id: str) -> Dict[str, Any]:
-    api_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
-
-    if not api_key:
-        raise ValueError("缺少環境變數 YOUTUBE_API_KEY")
-
-    url = (
-        "https://www.googleapis.com/youtube/v3/videos"
-        "?part=snippet,contentDetails,statistics"
-        f"&id={video_id}"
-        f"&key={api_key}"
-    )
-
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    )
-
-    with urllib.request.urlopen(req, timeout=15) as response:
-        data = json.loads(response.read().decode("utf-8"))
-
-    if not data.get("items"):
-        raise ValueError("找不到該影片，可能是影片不存在、私人影片或地區限制。")
-
-    item = data["items"][0]
-    snippet = item.get("snippet", {})
-    statistics = item.get("statistics", {})
-    content_details = item.get("contentDetails", {})
-
-    return {
-        "title": snippet.get("title", ""),
-        "description": snippet.get("description", ""),
-        "channel": snippet.get("channelTitle", ""),
-        "published_at": snippet.get("publishedAt", ""),
-        "duration": content_details.get("duration", ""),
-        "view_count": statistics.get("viewCount", ""),
-        "like_count": statistics.get("likeCount", ""),
-        "comment_count": statistics.get("commentCount", ""),
-    }
 
 
 def clean_description(description: str) -> str:
@@ -103,6 +70,9 @@ def clean_description(description: str) -> str:
         "patreon",
         "sponsor",
         "merch",
+        "加入會員",
+        "訂閱",
+        "追蹤",
     ]
 
     cleaned_lines = []
@@ -127,17 +97,14 @@ def clean_description(description: str) -> str:
 
 def clean_subtitle_text(raw_text: str) -> str:
     """
-    清理 VTT/SRT/JSON3 字幕文字。
+    清理 VTT / SRT 字幕。
     """
     if not raw_text:
         return ""
 
-    text = raw_text
+    raw_text = html.unescape(raw_text)
 
-    text = html.unescape(text)
-    text = urllib.parse.unquote(text)
-
-    lines = text.splitlines()
+    lines = raw_text.splitlines()
     clean_lines = []
 
     for line in lines:
@@ -164,63 +131,31 @@ def clean_subtitle_text(raw_text: str) -> str:
         if line.startswith("NOTE"):
             continue
 
-        if line.startswith("{") or line.startswith("["):
-            continue
-
         line = re.sub(r"<[^>]+>", "", line)
         line = html.unescape(line).strip()
 
         if line:
             clean_lines.append(line)
 
-    final_text = " ".join(clean_lines)
-    final_text = re.sub(r"\s+", " ", final_text)
-    return final_text.strip()
+    text = " ".join(clean_lines)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 
-def remove_temp_subtitle_files():
-    for file in glob.glob("temp_sub*"):
+def remove_temp_files(temp_dir: str) -> None:
+    for file in glob.glob(os.path.join(temp_dir, "yt_sub_*")):
         try:
             os.remove(file)
         except Exception:
             pass
 
 
-def find_downloaded_subtitle_file() -> Optional[str]:
-    candidates = []
+# =========================
+# 2. yt-dlp 設定
+# =========================
 
-    for file in glob.glob("temp_sub*"):
-        if file.endswith(".part"):
-            continue
-        if os.path.isfile(file):
-            candidates.append(file)
-
-    if not candidates:
-        return None
-
-    candidates.sort(key=lambda x: os.path.getsize(x), reverse=True)
-    return candidates[0]
-
-
-def detect_caption_type(info: Dict[str, Any]) -> Dict[str, Any]:
-    subtitles = info.get("subtitles", {}) or {}
-    auto_captions = info.get("automatic_captions", {}) or {}
-
+def get_base_ydl_opts() -> Dict[str, Any]:
     return {
-        "manual_languages": list(subtitles.keys()),
-        "auto_languages": list(auto_captions.keys()),
-        "has_manual": bool(subtitles),
-        "has_auto": bool(auto_captions),
-    }
-
-
-def download_subtitle_by_ytdlp(url: str, langs: List[str]) -> Dict[str, Any]:
-    """
-    使用 yt-dlp 下載手動字幕或自動字幕。
-    """
-    remove_temp_subtitle_files()
-
-    base_opts = {
         "quiet": True,
         "skip_download": True,
         "nocheckcertificate": True,
@@ -237,96 +172,175 @@ def download_subtitle_by_ytdlp(url: str, langs: List[str]) -> Dict[str, Any]:
         },
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web"]
+                # 字幕抓取不需要 android，避免 SABR / android client 額外問題
+                "player_client": ["web"]
             }
         },
     }
 
-    try:
-        print("🔎 使用 yt-dlp 檢查字幕清單...")
 
-        with yt_dlp.YoutubeDL({
-            **base_opts,
-            "list_subtitles": True,
-        }) as ydl:
-            info = ydl.extract_info(url, download=False)
+def fetch_video_info(url: str) -> Dict[str, Any]:
+    """
+    只抓 metadata 與字幕清單，不下載影片。
+    """
+    opts = get_base_ydl_opts()
 
-        caption_info = detect_caption_type(info)
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
 
-        print(f"📌 手動字幕語言：{caption_info['manual_languages']}")
-        print(f"📌 自動字幕語言：{caption_info['auto_languages']}")
+    if not info:
+        raise RuntimeError("yt-dlp 無法取得影片資訊")
 
-        if not caption_info["has_manual"] and not caption_info["has_auto"]:
-            return {
-                "success": False,
-                "transcript": "",
-                "transcript_status": "no_subtitles",
-                "transcript_language": None,
-                "manual_languages": [],
-                "auto_languages": [],
-                "error": "沒有找到手動字幕或自動字幕",
-            }
+    return info
 
-        ydl_opts_down = {
-            **base_opts,
-            "writesubtitles": True,
-            "writeautomaticsub": True,
-            "subtitleslangs": langs,
-            "subtitlesformat": "vtt/srt/best",
-            "outtmpl": "temp_sub",
+
+# =========================
+# 3. 字幕選擇邏輯
+# =========================
+
+def normalize_lang(lang: str) -> str:
+    return lang.lower().replace("_", "-")
+
+
+def lang_score(lang: str) -> int:
+    """
+    分數越低優先權越高。
+    針對你的需求：中文優先，其次英文。
+    """
+    l = normalize_lang(lang)
+
+    priority = [
+        "zh-tw",
+        "zh-hant",
+        "zh",
+        "zh-hans",
+        "en",
+        "en-us",
+        "en-gb",
+    ]
+
+    if l in priority:
+        return priority.index(l)
+
+    if l.startswith("zh"):
+        return 10
+
+    if l.startswith("en"):
+        return 20
+
+    return 100
+
+
+def choose_best_subtitle(info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    先看手動字幕，再看自動字幕。
+    但不是硬猜語言，而是從實際存在的字幕清單中選。
+    """
+    subtitles = info.get("subtitles", {}) or {}
+    auto_captions = info.get("automatic_captions", {}) or {}
+
+    manual_languages = list(subtitles.keys())
+    auto_languages = list(auto_captions.keys())
+
+    if subtitles:
+        best_lang = sorted(manual_languages, key=lang_score)[0]
+        return {
+            "available": True,
+            "subtitle_type": "official",
+            "language": best_lang,
+            "manual_languages": manual_languages,
+            "auto_languages": auto_languages,
         }
 
-        print(f"⬇️ 正在下載字幕，語言優先順序：{', '.join(langs)}")
+    if auto_captions:
+        best_lang = sorted(auto_languages, key=lang_score)[0]
+        return {
+            "available": True,
+            "subtitle_type": "generated",
+            "language": best_lang,
+            "manual_languages": manual_languages,
+            "auto_languages": auto_languages,
+        }
 
-        with yt_dlp.YoutubeDL(ydl_opts_down) as ydl_down:
-            ydl_down.download([url])
+    return {
+        "available": False,
+        "subtitle_type": "none",
+        "language": None,
+        "manual_languages": manual_languages,
+        "auto_languages": auto_languages,
+    }
 
-        subtitle_file = find_downloaded_subtitle_file()
+
+# =========================
+# 4. 字幕下載
+# =========================
+
+def find_downloaded_subtitle_file(temp_dir: str) -> Optional[str]:
+    files = [
+        f for f in glob.glob(os.path.join(temp_dir, "yt_sub_*"))
+        if os.path.isfile(f) and not f.endswith(".part")
+    ]
+
+    if not files:
+        return None
+
+    return max(files, key=os.path.getsize)
+
+
+def download_selected_subtitle(
+    url: str,
+    language: str,
+    subtitle_type: str,
+    temp_dir: str = "."
+) -> Dict[str, Any]:
+    """
+    只下載已確認存在的單一字幕語言，降低 429 機率。
+    """
+    remove_temp_files(temp_dir)
+
+    outtmpl = os.path.join(temp_dir, "yt_sub_%(id)s")
+
+    opts = {
+        **get_base_ydl_opts(),
+        "writesubtitles": subtitle_type == "official",
+        "writeautomaticsub": subtitle_type == "generated",
+        "subtitleslangs": [language],
+        "subtitlesformat": "vtt/srt/best",
+        "outtmpl": outtmpl,
+    }
+
+    try:
+        print(f"⬇️ 下載字幕：{subtitle_type} / {language}")
+
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
+
+        subtitle_file = find_downloaded_subtitle_file(temp_dir)
 
         if not subtitle_file:
             return {
                 "success": False,
                 "transcript": "",
-                "transcript_status": "subtitle_file_not_found",
-                "transcript_language": None,
-                "manual_languages": caption_info["manual_languages"],
-                "auto_languages": caption_info["auto_languages"],
-                "error": "yt-dlp 顯示有字幕，但未找到下載後的字幕檔",
+                "subtitle_file": None,
+                "error": "yt-dlp 顯示有字幕，但沒有產生字幕檔案",
             }
 
         with open(subtitle_file, "r", encoding="utf-8", errors="ignore") as f:
             raw_text = f.read()
 
-        transcript_text = clean_subtitle_text(raw_text)
+        transcript = clean_subtitle_text(raw_text)
 
-        if not transcript_text:
+        if len(transcript.strip()) < 100:
             return {
                 "success": False,
-                "transcript": "",
-                "transcript_status": "empty_subtitle",
-                "transcript_language": None,
-                "manual_languages": caption_info["manual_languages"],
-                "auto_languages": caption_info["auto_languages"],
-                "error": "字幕檔內容為空或清理後無文字",
+                "transcript": transcript,
+                "subtitle_file": subtitle_file,
+                "error": "字幕內容過短，可能下載失敗或字幕無效",
             }
-
-        filename_lower = subtitle_file.lower()
-        transcript_language = None
-
-        for lang in langs:
-            if f".{lang.lower()}." in filename_lower:
-                transcript_language = lang
-                break
-
-        transcript_status = "manual_or_auto"
 
         return {
             "success": True,
-            "transcript": transcript_text,
-            "transcript_status": transcript_status,
-            "transcript_language": transcript_language,
-            "manual_languages": caption_info["manual_languages"],
-            "auto_languages": caption_info["auto_languages"],
+            "transcript": transcript,
             "subtitle_file": subtitle_file,
             "error": None,
         }
@@ -335,48 +349,86 @@ def download_subtitle_by_ytdlp(url: str, langs: List[str]) -> Dict[str, Any]:
         return {
             "success": False,
             "transcript": "",
-            "transcript_status": "ytdlp_failed",
-            "transcript_language": None,
-            "manual_languages": [],
-            "auto_languages": [],
+            "subtitle_file": None,
             "error": str(e),
         }
 
     finally:
-        remove_temp_subtitle_files()
+        remove_temp_files(temp_dir)
 
+
+# =========================
+# 5. 主 Skill
+# =========================
 
 def fetch(input_data: str) -> Dict[str, Any]:
+    """
+    YouTube Input Skill v2
+
+    回傳格式維持相容 agent_core.py：
+    - title
+    - transcript
+    - transcript_status
+    - need_whisper
+    """
     try:
         video_id = extract_video_id(input_data)
         url = build_youtube_url(input_data)
 
-        metadata = fetch_metadata(video_id)
-
         print(f"🎬 YouTube 影片 ID：{video_id}")
-        print(f"🎞️ 標題：{metadata.get('title', '')}")
+        print("🔎 使用 yt-dlp 取得影片資訊與字幕清單...")
 
-        preferred_langs = ["en", "zh-TW", "zh-Hant", "zh"]
+        info = fetch_video_info(url)
 
-        subtitle_data = download_subtitle_by_ytdlp(url, preferred_langs)
+        title = info.get("title", "未命名 YouTube 影片")
+        description = info.get("description", "") or ""
+        channel = info.get("channel", "") or info.get("uploader", "")
+        published_at = str(info.get("upload_date", "") or "")
+        duration = info.get("duration", "")
+        view_count = info.get("view_count", "")
 
-        if subtitle_data.get("success"):
-            transcript_text = subtitle_data.get("transcript", "")
+        print(f"🎞️ 標題：{title}")
 
-            print(
-                f"✅ 字幕抓取成功：{subtitle_data.get('transcript_status')} "
-                f"({subtitle_data.get('transcript_language')})，"
-                f"共 {len(transcript_text)} 字。"
+        subtitle_choice = choose_best_subtitle(info)
+
+        print(f"📌 手動字幕：{subtitle_choice.get('manual_languages')}")
+        print(f"📌 自動字幕：{subtitle_choice.get('auto_languages')}")
+
+        transcript = ""
+        transcript_status = "none"
+        transcript_language = None
+        subtitle_error = None
+
+        if subtitle_choice["available"]:
+            transcript_status = subtitle_choice["subtitle_type"]
+            transcript_language = subtitle_choice["language"]
+
+            result = download_selected_subtitle(
+                url=url,
+                language=transcript_language,
+                subtitle_type=transcript_status,
+                temp_dir=".",
             )
+
+            if result["success"]:
+                transcript = result["transcript"]
+                print(
+                    f"✅ 字幕成功：{transcript_status} / "
+                    f"{transcript_language}，共 {len(transcript)} 字。"
+                )
+            else:
+                subtitle_error = result["error"]
+                transcript_status = f"{transcript_status}_download_failed"
+                print(f"⚠️ 字幕下載失敗：{subtitle_error}")
 
         else:
-            transcript_text = ""
+            subtitle_error = "影片沒有可用字幕"
+            print("⚠️ 沒有手動字幕或自動字幕。")
 
-            print(
-                f"⚠️ yt-dlp 字幕抓取失敗："
-                f"{subtitle_data.get('transcript_status')} / "
-                f"{subtitle_data.get('error')}"
-            )
+        need_whisper = not bool(transcript and len(transcript.strip()) >= 100)
+
+        if need_whisper:
+            print("⚠️ 未取得有效逐字稿，建議啟動 Whisper 備援。")
 
         return {
             "success": True,
@@ -384,24 +436,40 @@ def fetch(input_data: str) -> Dict[str, Any]:
             "video_id": video_id,
             "url": url,
 
-            "title": metadata.get("title", ""),
-            "description": metadata.get("description", ""),
-            "clean_description": clean_description(metadata.get("description", "")),
-            "channel": metadata.get("channel", ""),
-            "published_at": metadata.get("published_at", ""),
-            "duration": metadata.get("duration", ""),
-            "view_count": metadata.get("view_count", ""),
-            "like_count": metadata.get("like_count", ""),
-            "comment_count": metadata.get("comment_count", ""),
+            "title": title,
+            "description": description,
+            "clean_description": clean_description(description),
+            "channel": channel,
+            "published_at": published_at,
+            "duration": duration,
+            "view_count": view_count,
 
-            "transcript_status": subtitle_data.get("transcript_status"),
-            "transcript_language": subtitle_data.get("transcript_language"),
-            "manual_languages": subtitle_data.get("manual_languages", []),
-            "auto_languages": subtitle_data.get("auto_languages", []),
-            "transcript": transcript_text,
-            "need_whisper": not bool(transcript_text and len(transcript_text.strip()) >= 100),
+            "transcript": transcript,
+            "content": transcript,
 
-            "error": subtitle_data.get("error"),
+            "transcript_status": transcript_status,
+            "transcript_language": transcript_language,
+            "manual_languages": subtitle_choice.get("manual_languages", []),
+            "auto_languages": subtitle_choice.get("auto_languages", []),
+            "need_whisper": need_whisper,
+
+            "metadata": {
+                "title": title,
+                "channel": channel,
+                "published_at": published_at,
+                "duration": duration,
+                "view_count": view_count,
+                "url": url,
+            },
+
+            "status": {
+                "input_success": True,
+                "transcript_status": transcript_status,
+                "transcript_language": transcript_language,
+                "need_whisper": need_whisper,
+            },
+
+            "error": subtitle_error,
         }
 
     except Exception as e:
@@ -410,6 +478,7 @@ def fetch(input_data: str) -> Dict[str, Any]:
             "source": "youtube",
             "video_id": None,
             "url": input_data,
+
             "title": "",
             "description": "",
             "clean_description": "",
@@ -417,13 +486,22 @@ def fetch(input_data: str) -> Dict[str, Any]:
             "published_at": "",
             "duration": "",
             "view_count": "",
-            "like_count": "",
-            "comment_count": "",
+
+            "transcript": "",
+            "content": "",
+
             "transcript_status": "error",
             "transcript_language": None,
             "manual_languages": [],
             "auto_languages": [],
-            "transcript": "",
             "need_whisper": True,
+
+            "metadata": {},
+            "status": {
+                "input_success": False,
+                "transcript_status": "error",
+                "need_whisper": True,
+            },
+
             "error": str(e),
         }
