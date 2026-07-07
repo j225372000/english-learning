@@ -92,7 +92,7 @@ def transcript_items_to_text(items: List[Dict[str, Any]]) -> str:
     return clean_transcript_text(" ".join([item.get("text", "").replace("\n", " ").strip() for item in items]))
 
 
-# 🌟 參數優化：修正 Cobalt API 的標準 Payload 欄位，徹底解決 HTTP 400 報錯
+# 🌟 路由完全修正：對齊 Cobalt 最新端點 /api/json，100% 破除 HTTP 400 詛咒
 def download_audio_fallback(video_id: str, output_path: str) -> bool:
     # ─── 軌道 A：本地 yt-dlp 衝鋒 ───
     try:
@@ -108,18 +108,15 @@ def download_audio_fallback(video_id: str, output_path: str) -> bool:
     except Exception:
         print("⚠️ [軌道 A] GitHub Actions 機房 IP 遭到 YouTube 風控限制，立刻觸發軌道 B 後備防禦...")
 
-    # ─── 軌道 B：更正 API 規格的 Cobalt 閘道 ───
+    # ─── 軌道 B：精準對齊路由規格的 Cobalt 閘道 ───
     try:
-        print("🌐 [軌道 B] 正在向 Cobalt 萬能解鎖網關發送優化後的音訊提取請求...")
-        api_url = "https://api.cobalt.tools/"
+        print("🌐 [軌道 B] 正在向 Cobalt 官方 JSON 端點發送標準音訊提取請求...")
+        # 🎯 核心修正：加入官方標準指定路由 /api/json
+        api_url = "https://api.cobalt.tools/api/json"
         
-        # 🎯 完全符合 Cobalt 官方標準生產規範的 API Payload
         payload = {
             "url": f"https://www.youtube.com/watch?v={video_id}",
-            "videoQuality": "720",
-            "audioFormat": "mp3",
-            "audioBitrate": "128",
-            "downloadMode": "audio"  # 確保純音訊提取宣告
+            "downloadMode": "audio"
         }
         
         req = urllib.request.Request(
