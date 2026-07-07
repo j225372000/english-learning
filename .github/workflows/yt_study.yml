@@ -42,14 +42,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         
-        # 🌟 【環境解鎖】安裝 Linux 系統級音訊轉碼器，這是 Whisper/yt-dlp 轉檔 mp3 的核心必需品
+        # 🌟 1. 安裝 Linux 系統級音訊轉碼器，這是處理音訊的絕對必備組件
         sudo apt-get update && sudo apt-get install -y ffmpeg
         
-        # 🌟 【核心升級】安裝並強制升級最新版 yt-dlp，確保跳過 YouTube 的下載阻斷機制
-        pip install --upgrade yt-dlp
+        # 🌟 2. 【終極解鎖】跳過標準 pip，直接去 yt-dlp 官方 GitHub 撈最新二進位執行檔，徹底繞過所有舊版本封鎖與 status 1 錯誤
+        sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+        sudo chmod a+rx /usr/local/bin/yt-dlp
         
-        # 安裝原本與新積木（YouTube 字幕與 PDF 解析）所需的 Python 核心依賴庫
-        pip install google-genai pypdf youtube-transcript-api
+        # 🌟 3. 實質檢查版本，確保安裝完全成功
+        yt-dlp --version
+        
+        # 4. 安裝其餘 Python 核心套件 (加入 --no-cache-dir 防止抓到舊版殘留快取)
+        pip install --no-cache-dir google-genai pypdf youtube-transcript-api
 
     - name: ⚙️ Run Universal Agent Core
       env:
