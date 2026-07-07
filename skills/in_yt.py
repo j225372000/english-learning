@@ -2,53 +2,42 @@ import os
 import re
 import json
 import html
+import tempfile
+import subprocess
 import urllib.request
 import urllib.parse
+from pathlib import Path
 from typing import Dict, Any, List
 
 
 try:
     from youtube_transcript_api import YouTubeTranscriptApi
-    from youtube_transcript_api._errors import (
-        NoTranscriptFound,
-        TranscriptsDisabled,
-        VideoUnavailable,
-    )
 except Exception:
     YouTubeTranscriptApi = None
-    NoTranscriptFound = Exception
-    TranscriptsDisabled = Exception
-    VideoUnavailable = Exception
 
 
 def extract_video_id(input_data: str) -> str:
     text = input_data.strip()
 
-    if len(text) == 11 and re.fullmatch(r"[a-zA-Z0-9_-]{11}", text):
+    if re.fullmatch(r"[a-zA-Z0-9_-]{11}", text):
         return text
-
-    if "v=" in text:
-        match = re.search(r"v=([a-zA-Z0-9_-]{11})", text)
-        if match:
-            return match.group(1)
 
     parsed = urllib.parse.urlparse(text)
 
     if "youtube.com" in parsed.netloc:
         if parsed.path == "/watch":
-            query = urllib.parse.parse_qs(parsed.query)
-            video_id = query.get("v", [""])[0]
-            if video_id:
-                return video_id
-
+            return urllib.parse.parse_qs(parsed.query).get("v", [""])[0]
         if parsed.path.startswith("/shorts/"):
             return parsed.path.split("/shorts/")[1].split("/")[0]
-
         if parsed.path.startswith("/live/"):
             return parsed.path.split("/live/")[1].split("/")[0]
 
     if "youtu.be" in parsed.netloc:
         return parsed.path.strip("/").split("/")[0]
+
+    match = re.search(r"v=([a-zA-Z0-9_-]{11})", text)
+    if match:
+        return match.group(1)
 
     return text
 
@@ -68,19 +57,19 @@ def fetch_metadata(video_id: str) -> Dict[str, Any]:
 
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        headers={"User-Agent": "Mozilla/5.0"}
     )
 
-    with urllib.request.urlopen(req, timeout=15) as response:
+    with urllib.request.urlopen(req, timeout=20) as response:
         data = json.loads(response.read().decode("utf-8"))
 
     if not data.get("items"):
-        raise ValueError("找不到該影片，可能是影片不存在、私人影片或地區限制。")
+        raise ValueError("找不到該影片，可能是私人影片、刪除影片或地區限制。")
 
     item = data["items"][0]
     snippet = item.get("snippet", {})
-    statistics = item.get("statistics", {})
     content_details = item.get("contentDetails", {})
+    statistics = item.get("statistics", {})
 
     return {
         "title": snippet.get("title", ""),
@@ -89,51 +78,10 @@ def fetch_metadata(video_id: str) -> Dict[str, Any]:
         "published_at": snippet.get("publishedAt", ""),
         "duration": content_details.get("duration", ""),
         "view_count": statistics.get("viewCount", ""),
-        "like_count": statistics.get("likeCount", ""),
-        "comment_count": statistics.get("commentCount", ""),
     }
 
 
-def clean_description(description: str) -> str:
-    if not description:
-        return ""
-
-    remove_keywords = [
-        "subscribe",
-        "follow me",
-        "instagram",
-        "facebook",
-        "twitter",
-        "x.com",
-        "discord",
-        "patreon",
-        "sponsor",
-        "merch",
-    ]
-
-    lines = description.splitlines()
-    cleaned_lines = []
-
-    for line in lines:
-        text = line.strip()
-
-        if not text:
-            continue
-
-        lower_text = text.lower()
-
-        if any(k in lower_text for k in remove_keywords):
-            continue
-
-        if text.startswith("http"):
-            continue
-
-        cleaned_lines.append(text)
-
-    return "\n".join(cleaned_lines)
-
-
-def clean_transcript_text(text: str) -> str:
+def clean_text(text: str) -> str:
     if not text:
         return ""
 
@@ -144,291 +92,243 @@ def clean_transcript_text(text: str) -> str:
     return text.strip()
 
 
-def merge_transcript_items(items: List[Dict[str, Any]]) -> str:
+def clean_description(description: str) -> str:
+    if not description:
+        return ""
+
+    remove_keywords = [
+        "subscribe", "follow me", "instagram", "facebook",
+        "twitter", "x.com", "discord", "patreon", "sponsor"
+    ]
+
     lines = []
 
-    for item in items:
-        text = item.get("text", "")
-        text = clean_transcript_text(text)
+    for line in description.splitlines():
+        t = line.strip()
+        if not t:
+            continue
+        if t.startswith("http"):
+            continue
+        if any(k in t.lower() for k in remove_keywords):
+            continue
+        lines.append(t)
 
-        if text:
-            lines.append(text)
-
-    return " ".join(lines).strip()
+    return "\n".join(lines)
 
 
-def fetch_transcript_by_api(video_id: str) -> Dict[str, Any]:
+def fetch_transcript_api(video_id: str) -> Dict[str, Any]:
     """
-    優先使用 youtube-transcript-api。
-    判斷官方字幕 / 自動字幕。
+    第一優先：youtube-transcript-api
     """
     if YouTubeTranscriptApi is None:
         return {
             "success": False,
             "transcript": "",
-            "transcript_status": "api_not_installed",
-            "transcript_language": None,
-            "official_languages": [],
-            "generated_languages": [],
-            "error": "尚未安裝 youtube-transcript-api",
+            "status": "api_not_installed",
+            "language": None,
+            "error": "youtube-transcript-api 未安裝",
         }
 
-    preferred_languages = ["zh-TW", "zh-Hant", "zh", "en", "ja"]
+    preferred_languages = ["zh-TW", "zh-Hant", "zh", "en"]
 
     try:
         api = YouTubeTranscriptApi()
         transcript_list = api.list(video_id)
 
-        official_languages = []
-        generated_languages = []
-
-        for transcript in transcript_list:
-            if transcript.is_generated:
-                generated_languages.append(transcript.language_code)
-            else:
-                official_languages.append(transcript.language_code)
-
         selected = None
         selected_status = None
 
+        # 先找官方字幕
         for lang in preferred_languages:
-            for transcript in transcript_list:
-                if transcript.language_code == lang and not transcript.is_generated:
-                    selected = transcript
+            for t in transcript_list:
+                if t.language_code == lang and not t.is_generated:
+                    selected = t
                     selected_status = "official"
                     break
             if selected:
                 break
 
+        # 再找自動字幕
         if not selected:
             for lang in preferred_languages:
-                for transcript in transcript_list:
-                    if transcript.language_code == lang and transcript.is_generated:
-                        selected = transcript
+                for t in transcript_list:
+                    if t.language_code == lang and t.is_generated:
+                        selected = t
                         selected_status = "generated"
                         break
                 if selected:
                     break
 
+        # 還是沒有就拿第一個可用字幕
         if not selected:
-            for transcript in transcript_list:
-                selected = transcript
-                selected_status = "generated" if transcript.is_generated else "official"
+            for t in transcript_list:
+                selected = t
+                selected_status = "generated" if t.is_generated else "official"
                 break
 
         if not selected:
             return {
                 "success": False,
                 "transcript": "",
-                "transcript_status": "none",
-                "transcript_language": None,
-                "official_languages": official_languages,
-                "generated_languages": generated_languages,
-                "error": "找不到可用字幕",
+                "status": "none",
+                "language": None,
+                "error": "沒有可用字幕",
             }
 
         items = selected.fetch()
-        transcript_text = merge_transcript_items(items)
 
-        if not transcript_text:
-            return {
-                "success": False,
-                "transcript": "",
-                "transcript_status": "empty",
-                "transcript_language": selected.language_code,
-                "official_languages": official_languages,
-                "generated_languages": generated_languages,
-                "error": "字幕內容為空",
-            }
+        parts = []
+        for item in items:
+            text = clean_text(item.get("text", ""))
+            if text:
+                parts.append(text)
+
+        transcript = " ".join(parts).strip()
 
         return {
-            "success": True,
-            "transcript": transcript_text,
-            "transcript_status": selected_status,
-            "transcript_language": selected.language_code,
-            "official_languages": official_languages,
-            "generated_languages": generated_languages,
-            "error": None,
-        }
-
-    except NoTranscriptFound:
-        return {
-            "success": False,
-            "transcript": "",
-            "transcript_status": "none",
-            "transcript_language": None,
-            "official_languages": [],
-            "generated_languages": [],
-            "error": "找不到字幕",
-        }
-
-    except TranscriptsDisabled:
-        return {
-            "success": False,
-            "transcript": "",
-            "transcript_status": "disabled",
-            "transcript_language": None,
-            "official_languages": [],
-            "generated_languages": [],
-            "error": "此影片停用字幕",
-        }
-
-    except VideoUnavailable:
-        return {
-            "success": False,
-            "transcript": "",
-            "transcript_status": "video_unavailable",
-            "transcript_language": None,
-            "official_languages": [],
-            "generated_languages": [],
-            "error": "影片無法使用",
+            "success": bool(transcript),
+            "transcript": transcript,
+            "status": selected_status,
+            "language": selected.language_code,
+            "error": None if transcript else "字幕內容為空",
         }
 
     except Exception as e:
         return {
             "success": False,
             "transcript": "",
-            "transcript_status": "api_error",
-            "transcript_language": None,
-            "official_languages": [],
-            "generated_languages": [],
+            "status": "api_failed",
+            "language": None,
             "error": str(e),
         }
 
 
-def fetch_raw_html_transcript(video_id: str) -> Dict[str, Any]:
+def parse_vtt_file(path: Path) -> str:
     """
-    備援：直接解析 YouTube 前端 HTML 中公開字幕。
-    不建議當主力，但可作為 youtube-transcript-api 失敗後的備援。
+    清理 yt-dlp 抓下來的 .vtt 字幕
     """
-    print("🌐 youtube-transcript-api 未成功，改用 HTML 字幕解析備援...")
+    text = path.read_text(encoding="utf-8", errors="ignore")
 
+    lines = []
+    previous = ""
+
+    for line in text.splitlines():
+        line = line.strip()
+
+        if not line:
+            continue
+
+        if line.startswith("WEBVTT"):
+            continue
+
+        if "-->" in line:
+            continue
+
+        if re.match(r"^\d+$", line):
+            continue
+
+        if line.startswith("Kind:") or line.startswith("Language:"):
+            continue
+
+        line = re.sub(r"<[^>]+>", "", line)
+        line = clean_text(line)
+
+        if not line:
+            continue
+
+        # 避免 VTT 重複字幕
+        if line == previous:
+            continue
+
+        lines.append(line)
+        previous = line
+
+    return " ".join(lines).strip()
+
+
+def fetch_transcript_ytdlp(video_id: str) -> Dict[str, Any]:
+    """
+    第二優先：yt-dlp 抓官方字幕 / 自動字幕
+    這是參考 SubDown 的核心做法。
+    """
     video_url = f"https://www.youtube.com/watch?v={video_id}"
 
-    try:
-        req = urllib.request.Request(
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+
+        cmd = [
+            "yt-dlp",
+            "--skip-download",
+            "--write-subs",
+            "--write-auto-subs",
+            "--sub-langs", "zh-Hant,zh-TW,zh,en",
+            "--sub-format", "vtt",
+            "-o", str(tmp_path / "%(id)s.%(ext)s"),
             video_url,
-            headers={
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/120.0.0.0 Safari/537.36"
-                ),
-                "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-            },
-        )
+        ]
 
-        with urllib.request.urlopen(req, timeout=20) as response:
-            raw = response.read()
-            html_text = raw.decode("utf-8", errors="ignore")
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
 
-        if "playerCaptionsTracklistRenderer" not in html_text:
-            return {
-                "success": False,
-                "transcript": "",
-                "transcript_status": "html_no_caption_renderer",
-                "transcript_language": None,
-                "error": "HTML 中未發現字幕渲染軌道",
-            }
+            if result.returncode != 0:
+                return {
+                    "success": False,
+                    "transcript": "",
+                    "status": "ytdlp_failed",
+                    "language": None,
+                    "error": result.stderr,
+                }
 
-        match = re.search(r'"captionTracks":\s*(\[.*?\])', html_text)
+            vtt_files = list(tmp_path.glob("*.vtt"))
 
-        if not match:
-            return {
-                "success": False,
-                "transcript": "",
-                "transcript_status": "html_no_caption_tracks",
-                "transcript_language": None,
-                "error": "無法切割 captionTracks",
-            }
+            if not vtt_files:
+                return {
+                    "success": False,
+                    "transcript": "",
+                    "status": "ytdlp_no_subtitle",
+                    "language": None,
+                    "error": "yt-dlp 未產生字幕檔",
+                }
 
-        caption_tracks = json.loads(match.group(1))
+            # 優先順序
+            priority = ["zh-Hant", "zh-TW", "zh", "en"]
 
-        target_track = None
+            selected_file = None
 
-        for track in caption_tracks:
-            lang_code = track.get("languageCode", "").lower()
-            if lang_code in ["zh-tw", "zh-hant", "zh"]:
-                target_track = track
-                break
-
-        if not target_track:
-            for track in caption_tracks:
-                lang_code = track.get("languageCode", "").lower()
-                if lang_code == "en":
-                    target_track = track
+            for lang in priority:
+                for file in vtt_files:
+                    if lang.lower() in file.name.lower():
+                        selected_file = file
+                        break
+                if selected_file:
                     break
 
-        if not target_track and caption_tracks:
-            target_track = caption_tracks[0]
+            if not selected_file:
+                selected_file = vtt_files[0]
 
-        if not target_track:
+            transcript = parse_vtt_file(selected_file)
+
+            return {
+                "success": bool(transcript),
+                "transcript": transcript,
+                "status": "ytdlp_success",
+                "language": selected_file.name,
+                "error": None if transcript else "字幕檔內容為空",
+            }
+
+        except Exception as e:
             return {
                 "success": False,
                 "transcript": "",
-                "transcript_status": "html_no_target_track",
-                "transcript_language": None,
-                "error": "沒有可用字幕軌",
+                "status": "ytdlp_error",
+                "language": None,
+                "error": str(e),
             }
-
-        target_url = target_track.get("baseUrl")
-        target_lang = target_track.get("languageCode")
-
-        if not target_url:
-            return {
-                "success": False,
-                "transcript": "",
-                "transcript_status": "html_no_base_url",
-                "transcript_language": target_lang,
-                "error": "字幕軌沒有 baseUrl",
-            }
-
-        req_xml = urllib.request.Request(
-            target_url,
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-
-        with urllib.request.urlopen(req_xml, timeout=15) as xml_res:
-            xml_content = xml_res.read().decode("utf-8", errors="ignore")
-
-        text_segments = re.findall(r"<text[^>]*>([\s\S]*?)</text>", xml_content)
-
-        cleaned_text = []
-
-        for segment in text_segments:
-            text = clean_transcript_text(segment)
-            text = re.sub(r"<[^>]*>", "", text).strip()
-
-            if text:
-                cleaned_text.append(text)
-
-        transcript_text = " ".join(cleaned_text).strip()
-
-        if not transcript_text:
-            return {
-                "success": False,
-                "transcript": "",
-                "transcript_status": "html_empty",
-                "transcript_language": target_lang,
-                "error": "HTML 字幕內容為空",
-            }
-
-        return {
-            "success": True,
-            "transcript": transcript_text,
-            "transcript_status": "html_parsed_success",
-            "transcript_language": target_lang,
-            "error": None,
-        }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "transcript": "",
-            "transcript_status": "html_error",
-            "transcript_language": None,
-            "error": str(e),
-        }
 
 
 def fetch(input_data: str) -> Dict[str, Any]:
@@ -439,57 +339,42 @@ def fetch(input_data: str) -> Dict[str, Any]:
         print(f"🎬 YouTube 影片 ID：{video_id}")
         print(f"🎞️ 標題：{metadata.get('title', '')}")
 
-        transcript_data = fetch_transcript_by_api(video_id)
+        # 1. 先用 youtube-transcript-api
+        transcript_result = fetch_transcript_api(video_id)
 
-        if transcript_data.get("success"):
+        if transcript_result["success"]:
             print(
-                f"✅ 字幕抓取成功：{transcript_data.get('transcript_status')} "
-                f"({transcript_data.get('transcript_language')})，"
-                f"共 {len(transcript_data.get('transcript', ''))} 字。"
+                f"✅ youtube-transcript-api 成功："
+                f"{transcript_result['status']} / {transcript_result['language']} / "
+                f"{len(transcript_result['transcript'])} 字"
+            )
+        else:
+            print(
+                f"⚠️ youtube-transcript-api 失敗："
+                f"{transcript_result['status']} / {transcript_result['error']}"
             )
 
-        else:
-            print(f"⚠️ youtube-transcript-api 失敗：{transcript_data.get('transcript_status')} / {transcript_data.get('error')}")
+            # 2. 再用 yt-dlp
+            transcript_result = fetch_transcript_ytdlp(video_id)
 
-            html_data = fetch_raw_html_transcript(video_id)
-
-            if html_data.get("success"):
-                transcript_data = {
-                    "success": True,
-                    "transcript": html_data.get("transcript", ""),
-                    "transcript_status": html_data.get("transcript_status"),
-                    "transcript_language": html_data.get("transcript_language"),
-                    "official_languages": transcript_data.get("official_languages", []),
-                    "generated_languages": transcript_data.get("generated_languages", []),
-                    "error": None,
-                }
-
+            if transcript_result["success"]:
                 print(
-                    f"✅ HTML 備援字幕成功："
-                    f"{transcript_data.get('transcript_language')}，"
-                    f"共 {len(transcript_data.get('transcript', ''))} 字。"
+                    f"✅ yt-dlp 字幕抓取成功："
+                    f"{transcript_result['language']} / "
+                    f"{len(transcript_result['transcript'])} 字"
+                )
+            else:
+                print(
+                    f"⚠️ yt-dlp 也失敗："
+                    f"{transcript_result['status']} / {transcript_result['error']}"
                 )
 
-            else:
-                transcript_data = {
-                    "success": False,
-                    "transcript": "",
-                    "transcript_status": "none",
-                    "transcript_language": None,
-                    "official_languages": transcript_data.get("official_languages", []),
-                    "generated_languages": transcript_data.get("generated_languages", []),
-                    "error": html_data.get("error"),
-                }
-
-                print("⚠️ 所有字幕抓取方式都失敗，建議後續啟動 Whisper。")
-
-        transcript_text = transcript_data.get("transcript", "")
+        transcript = transcript_result.get("transcript", "")
 
         return {
             "success": True,
             "source": "youtube",
             "video_id": video_id,
-
             "title": metadata.get("title", ""),
             "description": metadata.get("description", ""),
             "clean_description": clean_description(metadata.get("description", "")),
@@ -497,17 +382,12 @@ def fetch(input_data: str) -> Dict[str, Any]:
             "published_at": metadata.get("published_at", ""),
             "duration": metadata.get("duration", ""),
             "view_count": metadata.get("view_count", ""),
-            "like_count": metadata.get("like_count", ""),
-            "comment_count": metadata.get("comment_count", ""),
 
-            "transcript_status": transcript_data.get("transcript_status"),
-            "transcript_language": transcript_data.get("transcript_language"),
-            "official_languages": transcript_data.get("official_languages", []),
-            "generated_languages": transcript_data.get("generated_languages", []),
-            "transcript": transcript_text,
-            "need_whisper": not bool(transcript_text and len(transcript_text.strip()) >= 100),
-
-            "error": transcript_data.get("error"),
+            "transcript_status": transcript_result.get("status"),
+            "transcript_language": transcript_result.get("language"),
+            "transcript": transcript,
+            "need_whisper": not bool(transcript and len(transcript.strip()) >= 100),
+            "error": transcript_result.get("error"),
         }
 
     except Exception as e:
@@ -522,12 +402,8 @@ def fetch(input_data: str) -> Dict[str, Any]:
             "published_at": "",
             "duration": "",
             "view_count": "",
-            "like_count": "",
-            "comment_count": "",
             "transcript_status": "error",
             "transcript_language": None,
-            "official_languages": [],
-            "generated_languages": [],
             "transcript": "",
             "need_whisper": True,
             "error": str(e),
