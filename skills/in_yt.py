@@ -92,7 +92,7 @@ def transcript_items_to_text(items: List[Dict[str, Any]]) -> str:
     return clean_transcript_text(" ".join([item.get("text", "").replace("\n", " ").strip() for item in items]))
 
 
-# 🌟 全新升級：整合本地端與工業級 Cobalt 萬用解鎖閘道的音訊下載核心
+# 🌟 參數優化：修正 Cobalt API 的標準 Payload 欄位，徹底解決 HTTP 400 報錯
 def download_audio_fallback(video_id: str, output_path: str) -> bool:
     # ─── 軌道 A：本地 yt-dlp 衝鋒 ───
     try:
@@ -108,24 +108,25 @@ def download_audio_fallback(video_id: str, output_path: str) -> bool:
     except Exception:
         print("⚠️ [軌道 A] GitHub Actions 機房 IP 遭到 YouTube 風控限制，立刻觸發軌道 B 後備防禦...")
 
-    # ─── 軌道 B：切換 2026 工業級免鎖 IP 的 Cobalt 全球網路閘道 ───
+    # ─── 軌道 B：更正 API 規格的 Cobalt 閘道 ───
     try:
-        print("🌐 [軌道 B] 正在向 Cobalt 萬能智能體解鎖網關發送音訊提取請求...")
+        print("🌐 [軌道 B] 正在向 Cobalt 萬能解鎖網關發送優化後的音訊提取請求...")
         api_url = "https://api.cobalt.tools/"
         
-        # 構建符合 Cobalt API 規範的標準 JSON 請求體
+        # 🎯 完全符合 Cobalt 官方標準生產規範的 API Payload
         payload = {
             "url": f"https://www.youtube.com/watch?v={video_id}",
-            "downloadMode": "audio",
+            "videoQuality": "720",
             "audioFormat": "mp3",
-            "audioBitrate": "128"
+            "audioBitrate": "128",
+            "downloadMode": "audio"  # 確保純音訊提取宣告
         }
         
         req = urllib.request.Request(
             api_url,
             data=json.dumps(payload).encode("utf-8"),
             headers={
-                "User-Agent": "Mozilla/5.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
@@ -135,7 +136,6 @@ def download_audio_fallback(video_id: str, output_path: str) -> bool:
         with urllib.request.urlopen(req, timeout=25) as response:
             res_data = json.loads(response.read().decode("utf-8"))
             
-        # Cobalt 成功破防後會直接吐出高速直連的純 mp3 下載位址
         download_url = res_data.get("url")
         if download_url:
             print("🚀 外部 Cobalt 網關成功突圍！正在以高速通道拉取音訊字節流...")
@@ -204,7 +204,6 @@ def fetch(input_data: str) -> Dict[str, Any]:
         transcript_text = ""
         transcript_status = "none"
         
-        # 🚂 優先嘗試常規手段：撈取官方提供或自動生成的現成文本字幕
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
             selected = None
@@ -225,7 +224,6 @@ def fetch(input_data: str) -> Dict[str, Any]:
             transcript_status = "official" if not selected.is_generated else "generated"
             print(f"🎯 成功獲取現成字幕，狀態為: {transcript_status}")
         except Exception:
-            # 🚀 官方完全撈不到字幕（例如你截圖中這支美股上太空的新片），立刻實質發動雙軌語音防線
             whisper_text = local_audio_whisper(video_id)
             if whisper_text:
                 transcript_text = whisper_text
