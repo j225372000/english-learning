@@ -12,7 +12,7 @@ from youtube_transcript_api._errors import (
     VideoUnavailable,
 )
 
-# 🌟 實質引入語音解鎖所需的標準庫
+# 🌟 實質引入語音解鎖與子程序執行所需的標準庫
 import subprocess
 
 
@@ -109,38 +109,42 @@ def transcript_items_to_text(items: List[Dict[str, Any]]) -> str:
     return clean_transcript_text(" ".join([item.get("text", "").replace("\n", " ").strip() for item in items]))
 
 
-# 🌟 新增：透過本地環境使用 Whisper 模態或語音辨識的核心後備機制
+# 🌟 核心防線：透過本地最新環境引導下載標準輕量音訊，交由 Gemini 進行原生多模態語音轉寫
 def local_audio_whisper(video_id: str) -> str:
     print("🎵 官方字幕失效，實質啟動 Whisper 語音音訊攔截技術...")
     audio_filename = f"audio_{video_id}"
     audio_path = f"{audio_filename}.mp3"
     
     try:
-        # 1. 使用輕量化工具下載極低音質的純音訊 (節省 GitHub Actions 頻寬與執行時間)
+        # 1. 使用優化後的標準輕量格式與無快取宣告下載，防禦 YouTube 的阻斷機制
         print("📥 正在從 YouTube 剝離並下載純音訊軌...")
         cmd_dl = [
             "yt-dlp",
-            "-x", "--audio-format", "mp3",
-            "--audio-quality", "9k", 
+            "-x", 
+            "--audio-format", "mp3",
+            "--audio-quality", "5",    # 標準可變位元率 (VBR)，降低流量特徵
+            "--no-cache-dir",          # 徹底禁用快取，繞過重複請求偵測
             f"https://www.youtube.com/watch?v={video_id}",
             "-o", audio_filename
         ]
-        subprocess.run(cmd_dl, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # 實質呼叫終端機啟動下載
+        subprocess.run(cmd_dl, check=True)
         
         if not os.path.exists(audio_path):
-            raise FileNotFoundError("音訊檔案下載失敗")
+            raise FileNotFoundError("音訊下載失敗，虛擬機未成功產出 mp3 檔案")
             
         print("🎙️ 音訊擷取成功！正在使用 Gemini 多模態大腦進行精準語音轉文字辨識...")
         
-        # 2. 實質調用專案現有的 genai 憑證，將音訊直接餵給 Gemini 進行原生語音轉譯 (免額外付費，速度極快)
+        # 2. 連線 Gemini 大腦，直接將音訊檔案以 Audio 模態餵給 AI (免去額外 Whisper 伺服器部署成本)
         from google import genai
         api_key = os.environ.get("GEMINI_API_KEY", "").strip()
         client = genai.Client(api_key=api_key)
         
-        # 上傳音訊檔案到 Gemini 暫存空間
+        # 上傳音訊檔案到 Gemini 雲端暫存空間
         audio_file = client.files.upload(file=audio_path)
         
-        # 呼叫 Flash 大腦快速進行語音轉文字
+        # 使用 Flash 大腦高速解析
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[
@@ -149,10 +153,11 @@ def local_audio_whisper(video_id: str) -> str:
             ]
         )
         
-        # 清理暫存與本地檔案
+        # 3. 實質清理本地與線上暫存，確保專案目錄與配額乾淨
         try:
             client.files.delete(name=audio_file.name)
-            os.remove(audio_path)
+            if os.path.exists(audio_path):
+                os.remove(audio_path)
         except:
             pass
             
@@ -161,14 +166,17 @@ def local_audio_whisper(video_id: str) -> str:
     except Exception as e:
         print(f"❌ Whisper 語音防線不幸遭遇異常: {str(e)}")
         if os.path.exists(audio_path):
-            os.remove(audio_path)
+            try:
+                os.remove(audio_path)
+            except:
+                pass
         return ""
 
 
 def fetch_transcript(video_id: str) -> Dict[str, Any]:
     preferred_languages = ["zh-TW", "zh-Hant", "en", "zh-CN"]
     try:
-        # 🚂 嘗試第一防線：抓取官方配給的字幕
+        # 🚂 第一防線：嘗試直接撈取官方提供或自動生成的現成文本字幕
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
         selected = None
         try:
@@ -192,7 +200,7 @@ def fetch_transcript(video_id: str) -> Dict[str, Any]:
         }
 
     except Exception as e:
-        # 🚀 實質觸發第二防線：官方抓不到了，啟動 Whisper 語音音訊流後備機制！
+        # 🚀 第二防線：官方完全撈不到了（例如新片上架），實質啟動上述 yt-dlp + Gemini 原生語音辨識
         whisper_text = local_audio_whisper(video_id)
         if whisper_text:
             return {
@@ -206,7 +214,7 @@ def fetch_transcript(video_id: str) -> Dict[str, Any]:
                 "transcript_status": "failed_all",
                 "transcript_language": None,
                 "transcript": "",
-                "transcript_error": f"官方無字幕且 Whisper 轉譯失敗: {str(e)}",
+                "transcript_error": f"官方無字幕且 Whisper 語音攔截辨識宣告失敗: {str(e)}",
             }
 
 
