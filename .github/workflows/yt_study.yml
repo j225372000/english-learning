@@ -10,9 +10,9 @@ on:
         required: true
         default: 'dQw4w9WgXcQ'
       input_type:
-        description: '請選擇輸入技能類型 (youtube / web / pdf)'
+        description: '請選擇輸入技能類型 (youtube=舊版 / yt=新逐字稿版 / web / pdf)'
         required: true
-        default: 'youtube'
+        default: 'yt'
       video_type:
         description: '請選擇 Prompt 大腦範本 (english / fed / general)'
         required: true
@@ -31,7 +31,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         persist-credentials: true
-        # 🔑 加上這行，1秒破解 GitHub 官方對 Actions 虛擬機的 429 限流
         token: ${{ secrets.GITHUB_TOKEN }} 
 
     - name: 🐍 Set up Python
@@ -42,7 +41,8 @@ jobs:
     - name: 📦 Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install google-genai pypdf
+        # 🌟 安裝所有相容套件，包含新積木必備的 youtube-transcript-api
+        pip install google-genai pypdf youtube-transcript-api
 
     - name: ⚙️ Run Universal Agent Core
       env:
@@ -55,7 +55,7 @@ jobs:
       run: |
         if [ -z "$INPUT_DATA" ]; then
           export INPUT_DATA="dQw4w9WgXcQ"
-          export INPUT_TYPE="youtube"
+          export INPUT_TYPE="yt"
           export VIDEO_TYPE="general"
           export VIDEO_OUTPUT="markdown"
         fi
