@@ -2,41 +2,41 @@
 
 ---
 
-## Rick Astley - Never Gonna Give You Up (官方影片, 4K 重製版) 知識筆記
+### 知識筆記：Rick Astley - Never Gonna Give You Up 歌詞分析
 
-### 一、 基本資訊
+**一、基本資訊**
+
 *   **歌曲名稱：** Never Gonna Give You Up
-*   **演唱者：** Rick Astley
-*   **影片版本：** 官方影片 (Official Video), 4K 重製版 (4K Remaster)
-*   **素材來源：** 歌詞內容與影片標題
+*   **藝人：** Rick Astley
+*   **素材來源：** 官方影片歌詞 (4K Remaster 版)
 
-### 二、 內容摘要
-本曲是一首關於堅定不移的愛與承諾的歌曲。歌詞中，演唱者（歌中角色）向對方表達了深切的愛意與長久關係的期待，並誓言將永遠忠誠、不離不棄。他強調自己所給予的承諾是獨一無二且真誠的，絕不會讓對方失望或受到傷害。歌曲也提及兩人之間已存在深厚連結，且有些情感雖然對方未明言，但彼此心照不宣。
+**二、主題與核心訊息**
 
-### 三、 歌詞主題與核心訊息
+這首歌的歌詞圍繞著對愛情的**堅定承諾與不渝忠誠**。演唱者向對方表達了深刻的情感，並承諾將永遠支持、不離不棄、絕不背叛。歌詞中也暗示了兩人之間長期的關係，以及對方可能因害羞而未表達的愛意，而演唱者則主動揭示並確認這份情感。
 
-1.  **堅定不移的承諾與忠誠：**
-    *   核心訊息圍繞著演唱者對其愛人永不放棄、永不背叛的堅定誓言。
-    *   歌詞多次重複「Never gonna give you up」（永遠不會放棄你）、「Never gonna let you down」（永遠不會讓你失望）等排比句，強調其承諾的絕對性與可靠性。
+**三、重點歌詞與承諾**
 
-2.  **坦率真誠的情感表達：**
-    *   演唱者直接且坦誠地表達自己的感受，聲明他所思所想是「一份完整的承諾」（A full commitment's what I'm thinking of）。
-    *   他自信地表示這種獨特的承諾是「任何其他人給不了的」（You wouldn't get this from any other guy）。
+歌詞中透過一系列重複且具象徵性的承諾，強調了演唱者對關係的嚴肅態度與可靠性：
 
-3.  **深厚且心照不宣的情感連結：**
-    *   歌詞暗示兩人關係已維持一段時間：「We're no strangers to love」、「We've known each other for so long」。
-    *   即便對方可能「太過害羞不敢說」（too shy to say it），演唱者也明白彼此心中的感受：「Your heart's been aching but you're too shy to say it / Inside we both know what's been going」。
+*   **"Never gonna give you up"** (永不放棄你)
+*   **"Never gonna let you down"** (永不讓你失望)
+*   **"Never gonna run around and desert you"** (永不離你而去、背棄你)
+*   **"Never gonna make you cry"** (永不讓你哭泣)
+*   **"Never gonna say goodbye"** (永不說再見)
+*   **"Never gonna tell a lie and hurt you"** (永不說謊傷害你)
 
-### 四、 主要重複句 (核心承諾)
-本曲最標誌性的歌詞，亦是演唱者所做出的一系列堅定承諾：
-*   "Never gonna give you up" (永遠不會放棄你)
-*   "Never gonna let you down" (永遠不會讓你失望)
-*   "Never gonna run around and desert you" (永遠不會背棄你而去)
-*   "Never gonna make you cry" (永遠不會讓你哭泣)
-*   "Never gonna say goodbye" (永遠不會說再見)
-*   "Never gonna tell a lie and hurt you" (永遠不會說謊傷害你)
+**四、情感表達**
 
-### 五、 補充說明
-標題中提及的「4K Remaster」版本，表示此官方影片經過高畫質修復與升級，顯示了這首歌曲及其音樂影片的經典地位與持續影響力，即使在數位時代仍能以更優異的視聽品質呈現給觀眾。
+*   **直率與自信：** 歌詞語氣直接且充滿自信，如「You know the rules and so do I」、「A full commitment's what I'm thinking of」，表達了演唱者對自己感情的確定性。
+*   **深情與理解：** 演唱者試圖讓對方理解這份深沉的愛與忠誠，並展現出對對方情感的細膩觀察與理解，如「Your heart's been aching but you're too shy to say it」。
+*   **邀請與保證：** 歌曲不僅是表白，更是一種邀請，鼓勵對方放下矜持，共同投入這段關係，並保證提供無條件的支持與信任。
+
+**五、歌詞結構與重複效果**
+
+歌詞巧妙運用了重複的副歌部分來加強其核心訊息。關鍵的「Never gonna...」系列承諾不斷重複，使得「永不放棄、永不背叛」的中心思想深植人心，營造出一種堅定不移、可靠信賴的氛圍。
+
+**六、總結**
+
+總體而言，這份歌詞傳達了一段堅不可摧、充滿信任與支持的愛情宣言，是**承諾與忠貞的象徵**。它細膩地描繪了兩人之間長久的情感基礎，並以直接而真誠的方式，為對方提供了一份穩定與安全的保障。
 
 ---
