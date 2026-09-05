@@ -207,8 +207,24 @@ def detect_caption_type(info: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def resolve_cookiefile() -> Optional[str]:
+    """尋找可選的 Netscape 格式 YouTube cookies.txt。"""
+    candidates = [
+        os.environ.get("YOUTUBE_COOKIES_FILE", "").strip(),
+        "/content/cookies.txt",
+        os.path.join(os.getcwd(), "cookies.txt"),
+    ]
+
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate):
+            print(f"🔐 已載入 YouTube Cookies：{candidate}")
+            return candidate
+
+    return None
+
+
 def make_base_opts() -> Dict[str, Any]:
-    return {
+    opts = {
         "quiet": True,
         "skip_download": True,
         "nocheckcertificate": True,
@@ -223,12 +239,16 @@ def make_base_opts() -> Dict[str, Any]:
             ),
             "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
         },
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "web"]
-            }
-        },
+        "socket_timeout": 20,
+        "retries": 2,
+        "fragment_retries": 2,
     }
+
+    cookiefile = resolve_cookiefile()
+    if cookiefile:
+        opts["cookiefile"] = cookiefile
+
+    return opts
 
 
 def build_language_candidates(
@@ -458,14 +478,24 @@ def download_subtitle_by_ytdlp(url: str, langs: List[str]) -> Dict[str, Any]:
         }
 
     except Exception as e:
+        error_message = str(e)
+        lower_error = error_message.lower()
+        status = (
+            "authentication_required"
+            if "confirm you're not a bot" in lower_error
+            or "sign in" in lower_error
+            or "cookies" in lower_error
+            else "ytdlp_failed"
+        )
+
         return {
             "success": False,
             "transcript": "",
-            "transcript_status": "ytdlp_failed",
+            "transcript_status": status,
             "transcript_language": None,
             "manual_languages": [],
             "auto_languages": [],
-            "error": str(e),
+            "error": error_message,
         }
 
     finally:
@@ -553,3 +583,4 @@ def fetch(input_data: str) -> Dict[str, Any]:
             "need_whisper": True,
             "error": str(e),
         }
+
