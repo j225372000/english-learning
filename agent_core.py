@@ -128,6 +128,7 @@ def main():
 
     source_title = ""
     source_content = ""
+    use_youtube_video_fallback = False
 
     try:
         if input_type == "yt":
@@ -188,9 +189,13 @@ def main():
         sys.exit(1)
 
     if not source_content or len(source_content.strip()) < 100:
-        print("⚠️ 未取得有效素材內容，停止產生正式知識筆記。")
-        print("建議：確認輸入來源是否可讀取，或改用其他輸入方式。")
-        sys.exit(1)
+        if input_type == "yt" and extracted_data.get("success", False):
+            use_youtube_video_fallback = True
+            print("🔄 字幕無法取得，改由 Gemini 直接讀取公開 YouTube 影片。")
+        else:
+            print("⚠️ 未取得有效素材內容，停止產生正式知識筆記。")
+            print("建議：確認輸入來源是否可讀取，或改用其他輸入方式。")
+            sys.exit(1)
 
     models_to_try = [
         {
@@ -214,7 +219,43 @@ def main():
         f"{source_content}"
     )
 
-    for model_info in models_to_try:
+    if use_youtube_video_fallback:
+        video_models = [
+            os.environ.get("GEMINI_VIDEO_MODEL", "gemini-3.8-flash").strip(),
+            "gemini-3.5-flash-lite",
+        ]
+        video_models = list(dict.fromkeys(m for m in video_models if m))
+        video_prompt = (
+            f"{system_prompt}\n\n"
+            f"# 目標素材標題\n{source_title}\n\n"
+            "請直接分析所附公開 YouTube 影片的影像與音訊，"
+            "依照上述要求產生完整知識筆記。不得只根據標題或說明欄推測。"
+        )
+
+        for model_name in video_models:
+            try:
+                print(f"🎥 嘗試由 {model_name} 直接讀取 YouTube 影片...")
+                interaction = client.interactions.create(
+                    model=model_name,
+                    input=[
+                        {"type": "video", "uri": input_data},
+                        {"type": "text", "text": video_prompt},
+                    ],
+                )
+                final_response_text = interaction.output_text or ""
+                if final_response_text.strip():
+                    chosen_model_name = model_name
+                    print(f"✨ {model_name} 已直接完成影片分析。")
+                    break
+            except Exception as e:
+                print(f"⚠️ {model_name} 直接讀取影片失敗：{str(e)}")
+
+        if not final_response_text:
+            print("🚨 字幕與 Gemini 直接影片讀取均失敗。")
+            print("建議：確認影片為公開狀態，或上傳 MP3／MP4 後再執行。")
+            sys.exit(1)
+
+    for model_info in ([] if use_youtube_video_fallback else models_to_try):
         model_name = model_info["name"]
 
         print(f"🧠 嘗試啟動：{model_info['desc']} ({model_name})")
@@ -280,3 +321,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
