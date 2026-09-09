@@ -1,44 +1,41 @@
-好的，這是一份根據您提供的素材內容製作的知識筆記：
+好的，這是一份針對您提供的素材內容製作的知識筆記：
 
 ---
 
-### **知識筆記：Rick Astley - Never Gonna Give You Up (官方音樂錄影帶, 4K修復版)**
+### **知識筆記：Rick Astley - Never Gonna Give You Up (官方影片 4K 修復版) 歌詞內容分析**
 
-**一、 基本資訊**
+**一、來源資訊**
 
-*   **歌曲標題：** Never Gonna Give You Up
-*   **藝人：** Rick Astley
-*   **素材來源：** 官方音樂錄影帶 (4K Remastered)
-*   **素材內容：** 歌曲完整歌詞
+*   **歌曲名稱：** Never Gonna Give You Up
+*   **演唱者：** Rick Astley
+*   **版本說明：** 官方影片 4K 修復版
+*   **素材性質：** 歌曲歌詞 (英文)
 
-**二、 核心主題**
+**二、主題與核心訊息**
 
-本歌曲圍繞著對愛情的堅定承諾與永不放棄的誓言展開。歌詞中表達了歌者對戀人的深情告白，強調了忠誠、支持與真誠的關係。
+本歌曲傳達了對愛情堅定不移的承諾與忠誠。歌詞以第一人稱視角，向戀人表達其真摯的情感、渴望建立全面承諾的關係，以及永不背棄、永不傷害的誓言。
 
-**三、 主要訊息與承諾**
+**三、主要承諾與保證 (副歌核心)**
 
-歌詞核心透過一系列強而有力的「絕不」（Never gonna）句型，明確傳達了歌者對伴侶的六大誓言：
+歌者以一系列「永不 (Never gonna...)」的排比句，明確地向戀人做出以下六項堅定不移的承諾：
 
-1.  **永不放棄：** Never gonna give you up (絕不放棄你)
-2.  **永不讓你失望：** Never gonna let you down (絕不讓你失望)
-3.  **永不背棄你：** Never gonna run around and desert you (絕不四處遊蕩並遺棄你)
-4.  **永不讓你哭泣：** Never gonna make you cry (絕不讓你哭泣)
-5.  **永不說再見：** Never gonna say goodbye (絕不說再見)
-6.  **永不說謊傷害你：** Never gonna tell a lie and hurt you (絕不說謊傷害你)
+1.  **永不放棄** (Never gonna give you up)
+2.  **永不辜負** (Never gonna let you down)
+3.  **永不離棄** (Never gonna run around and desert you)
+4.  **永不讓你哭泣** (Never gonna make you cry)
+5.  **永不說再見** (Never gonna say goodbye)
+6.  **永不以謊言傷害你** (Never gonna tell a lie and hurt you)
 
-這些承諾反覆出現，是歌曲最核心的情感表達，構成了一份堅不可摧的愛情宣言。
+**四、關係背景與情感表達**
 
-**四、 關係背景與情感表達**
+*   **長期關係：** 歌者強調兩人「並非愛情的陌生人 (no strangers to love)」，且「已認識許久 (known each other for so long)」，彼此都「知道規則 (know the rules)」與「心照不宣 (both know what's been going on)」。
+*   **渴望承諾：** 歌者表明「正在思考的是一份全面的承諾 (A full commitment's what I'm thinking of)」，並自信地表示這種專一與深情是其他任何人都無法給予的。
+*   **洞悉對方心境：** 歌者察覺到對方可能「心痛卻羞於啟齒 (heart's been aching but you're too shy to say it)」，因此主動表明心意，希望對方能理解他的感受。
+*   **主動表達：** 歌者渴望「告訴你我的感受，必須讓你明白 (I just wanna tell you how I'm feeling, gotta make you understand)」，並提醒對方「別說你太盲目而看不見 (Don't tell me you're too blind to see)」，暗示其愛意顯而易見。
 
-歌詞也描繪了歌者與伴侶之間深厚的關係基礎和情感互動：
+**五、歌詞結構特點**
 
-*   **長久且熟悉的關係：** "We're no strangers to love," "You know the rules and so do I," "We've known each other for so long." (彼此不陌生，深知遊戲規則，關係長久)
-*   **深層的理解與共鳴：** "A full commitment's what I'm thinking of," "You wouldn't get this from any other guy," "Inside we both know what's been going." (渴望全然的承諾，認定對方是唯一，雙方心照不宣)
-*   **對伴侶情感的察覺與回應：** "Your heart's been aching but you're too shy to say it." (感受到伴侶內心的煎熬與羞澀，並試圖給予回應)
-*   **坦率直接的告白：** "I just wanna tell you how I'm feeling," "Gotta make you understand," "And if you ask me how I'm feeling, Don't tell me you're too blind to see." (主動且直接地表達自己的感受，希望對方理解並看清)
-
-**五、 總結**
-
-《Never Gonna Give You Up》是一首充滿真誠與堅定情感的歌曲。透過簡潔而重複的歌詞結構，它傳達了一份對愛情、忠誠與支持的永恆誓言。歌者不僅表達了對伴侶的深厚情感，也承諾將提供一個安全、可靠且充滿愛的關係。
+*   **高度重複性：** 歌詞結構重複性高，特別是副歌部分，透過多次循環強化了歌者對愛情的堅定立場與承諾的訊息。
+*   **直接而清晰：** 歌詞用語直接，沒有過多隱晦的譬喻，旨在明確傳達「我愛你，我會永遠在你身邊」的核心信息。
 
 ---
