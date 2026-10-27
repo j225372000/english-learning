@@ -1,49 +1,61 @@
-好的，這是一份針對您提供素材內容製作的知識筆記：
+好的，這是一份根據您提供的素材內容製作的知識筆記：
 
 ---
 
-**知識筆記**
+### **知識筆記：Rick Astley - Never Gonna Give You Up**
 
-**標題:** Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)
+**目標素材標題：** Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)
 
 ---
 
-**一、 歌曲概覽**
+**一、概述 (Overview)**
 
-*   本筆記主要針對Rick Astley的經典歌曲《Never Gonna Give You Up》的官方4K修復版影片歌詞進行分析與整理。
-*   歌曲以其鮮明的流行舞曲風格、令人難忘的旋律以及承諾性十足的歌詞而廣為人知。
+此筆記整理了英國歌手 Rick Astley 經典歌曲《Never Gonna Give You Up》的完整歌詞內容，並分析其主題、核心承諾以及歌曲所傳達的情感。本素材特別註明為「官方音樂錄影帶 (Official Video)」及「4K 修復版 (4K Remaster)」，顯示其為原始作品的高畫質重製版本。
 
-**二、 核心資訊**
+---
 
-*   **歌曲名稱:** Never Gonna Give You Up
-*   **演出者 (Artist):** Rick Astley
-*   **素材版本:** Official Video (4K Remaster)
+**二、基本資訊 (Basic Information)**
 
-**三、 歌詞主題與情感分析**
+*   **歌曲名稱 (Song Title)：** Never Gonna Give You Up
+*   **藝人 (Artist)：** Rick Astley
+*   **語言 (Language)：** 英文 (English)
+*   **類型 (Genre)：** Pop, Dance-pop
+*   **備註 (Remarks)：** 4K 修復版官方音樂錄影帶 (4K Remastered Official Video)
 
-歌曲歌詞圍繞著對愛情的堅定承諾與忠誠展開，主要傳達以下情感和主旨：
+---
 
-*   **無條件的承諾 (Unconditional Commitment):**
-    *   核心信息透過副歌「Never gonna give you up, Never gonna let you down...」等句式反覆強調，表達了敘述者對愛情的堅決不移，永不放棄、永不背叛。
-    *   歌詞中提及「A full commitment's what I'm thinking of」，明確表達了追求一段完整且深厚的關係。
+**三、核心主題 (Core Theme)**
 
-*   **真誠與信任 (Sincerity & Trust):**
-    *   承諾「Never gonna make you cry, Never gonna say goodbye, Never gonna tell a lie and hurt you」，展現了敘述者希望建立一段誠實、無傷害關係的願望。
+歌詞圍繞著對愛情的堅定承諾與不渝忠誠。敘事者（歌曲中的「我」）向對方表達了深切的感受，承諾永不放棄、不背叛，並建立一段真誠且長久的關係。它是一首關於無條件付出和忠實守護的宣言。
 
-*   **深刻的連結與理解 (Deep Connection & Understanding):**
-    *   「We're no strangers to love」、「We've known each other for so long」等詞句，暗示了敘述者與對方之間有著長期的情感基礎與相互了解。
-    *   「Your heart's been aching but you're too shy to say it」與「Inside we both know what's been going」，表明敘述者對對方內心感受的洞察，以及雙方心照不宣的情感流動。
+---
 
-*   **獨特性與自信 (Uniqueness & Confidence):**
-    *   「You wouldn't get this from any other guy」一句，突顯了敘述者對自己情感投入的獨特自信，認為其承諾無人能及。
+**四、關鍵承諾與重複短語 (Key Promises & Recurring Phrases)**
 
-**四、 歌詞結構與重複效果**
+歌詞中不斷重複的核心承諾，強調了敘事者對伴侶的專一與保護：
 
-*   歌曲採用經典的Verse-Chorus（主歌-副歌）結構。主歌部分鋪陳情境與情感，副歌部分則以高度重複的方式，強化歌曲的核心信息——永不放棄的承諾。
-*   這種重複性不僅使歌曲記憶點高、易於傳唱，也加深了「永不放棄」這一主題的感染力。
+*   **Never gonna give you up** (永不放棄你)
+*   **Never gonna let you down** (永不讓你失望)
+*   **Never gonna run around and desert you** (永不離你而去，或拋棄你)
+*   **Never gonna make you cry** (永不讓你哭泣)
+*   **Never gonna say goodbye** (永不說再見)
+*   **Never gonna tell a lie and hurt you** (永不說謊傷害你)
 
-**五、 額外背景 (文化現象)**
+這些句子不僅是歌曲的高潮，也成為了流行文化中「Rickroll」迷因的標誌性內容。
 
-*   雖然歌詞內容本身並未直接提及，但《Never Gonna Give You Up》因其獨特的副歌與旋律，在全球網路文化中演變成著名的「Rickroll」（瑞克搖）迷因現象。這使得這首歌不僅是一首流行金曲，更成為一種特定的網路惡作劇或互動方式的代名詞，顯著擴大了其文化影響力。
+---
+
+**五、情感與情境描寫 (Emotional & Situational Description)**
+
+1.  **長期關係 (Long-standing Relationship)：** 歌詞開頭即點出「We're no strangers to love」和「We've known each other for so long」，暗示兩人相識已久，彼此了解。
+2.  **單向表白與理解 (One-sided Confession & Understanding)：** 敘事者主動表明心意「I just wanna tell you how I'm feeling, Gotta make you understand」，並暗示對方可能因害羞而未表達心聲「Your heart's been aching but you're too shy to say it」。
+3.  **堅定不移的愛 (Unwavering Love)：** 透過一系列「永不」的承諾，傳達了敘事者對於這段關係的「full commitment」（全面投入）和無悔的決心。
+4.  **信任與真誠 (Trust & Sincerity)：** 歌詞強調「You wouldn't get this from any other guy」，並承諾「Never gonna tell a lie and hurt you」，突顯了對建立信任和真誠關係的渴望。
+
+---
+
+**六、文化意義與影響 (Cultural Significance & Impact)**
+
+《Never Gonna Give You Up》因其動聽的旋律和堅定的歌詞，成為 Rick Astley 的代表作。除了音樂本身的成功，這首歌更因其在網路文化中演變為著名的「Rickroll (瑞克搖)」迷因，被廣泛用於出乎意料的惡作劇或連結點擊中，賦予了這首歌超越其原始音樂內容的獨特文化地位。4K 修復版的推出，也顯示了這首經典歌曲在現代數位環境中的持續影響力。
 
 ---
